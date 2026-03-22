@@ -1,0 +1,513 @@
+{
+  "readme": "Ogni entry pi rappresenta un ciclo di forme. Ogni level cambia shape. Quando il ciclo riparte, i numeri salgono: più onion, più rimbalzi, chase più veloce. arenaRotationSpeed è espresso in gradi al secondo. Le rotazioni ora arrivano tardi nel ciclo e restano più leggibili.",
+  "piTable": [
+    {
+      "pi": 0,
+      "levels": [
+        {
+          "arenaShape": "rect",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 3,
+          "onionCount": 3,
+          "onionSpeedScale": [
+            0.38
+          ],
+          "onionChaseSpeedScale": [
+            0.46,
+            0.5
+          ]
+        },
+        {
+          "arenaShape": "pentagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 3,
+          "onionCount": 3,
+          "onionSpeedScale": [
+            0.38
+          ],
+          "onionChaseSpeedScale": [
+            0.48,
+            0.52
+          ]
+        },
+        {
+          "arenaShape": "hexagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 3,
+          "onionCount": 3,
+          "onionSpeedScale": [
+            0.38
+          ],
+          "onionChaseSpeedScale": [
+            0.5,
+            0.54
+          ]
+        },
+        {
+          "arenaShape": "diamond",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 4,
+          "onionCount": 4,
+          "onionSpeedScale": [
+            0.38
+          ],
+          "onionChaseSpeedScale": [
+            0.5,
+            0.55
+          ]
+        },
+        {
+          "arenaShape": "octagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 4,
+          "onionCount": 4,
+          "onionSpeedScale": [
+            0.4
+          ],
+          "onionChaseSpeedScale": [
+            0.52,
+            0.57
+          ]
+        },
+        {
+          "arenaShape": "irregular",
+          "arenaRotationSpeed": -5,
+          "bulletBounces": 4,
+          "onionCount": 4,
+          "onionSpeedScale": [
+            0.4
+          ],
+          "onionChaseSpeedScale": [
+            0.54,
+            0.6
+          ]
+        },
+        {
+          "arenaShape": "circle",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 4,
+          "onionCount": 4,
+          "onionSpeedScale": [
+            0.4
+          ],
+          "onionChaseSpeedScale": [
+            0.56,
+            0.62
+          ]
+        }
+      ]
+    },
+    {
+      "pi": 1,
+      "levels": [
+        {
+          "arenaShape": "rect",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 4,
+          "onionCount": 4,
+          "onionSpeedScale": [
+            0.42
+          ],
+          "onionChaseSpeedScale": [
+            0.52,
+            0.58
+          ]
+        },
+        {
+          "arenaShape": "pentagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 4,
+          "onionCount": 4,
+          "onionSpeedScale": [
+            0.42
+          ],
+          "onionChaseSpeedScale": [
+            0.54,
+            0.6
+          ]
+        },
+        {
+          "arenaShape": "hexagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 4,
+          "onionCount": 4,
+          "onionSpeedScale": [
+            0.42
+          ],
+          "onionChaseSpeedScale": [
+            0.56,
+            0.62
+          ]
+        },
+        {
+          "arenaShape": "diamond",
+          "arenaRotationSpeed": 8,
+          "bulletBounces": 5,
+          "onionCount": 5,
+          "onionSpeedScale": [
+            0.42
+          ],
+          "onionChaseSpeedScale": [
+            0.58,
+            0.64
+          ]
+        },
+        {
+          "arenaShape": "octagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 5,
+          "onionCount": 5,
+          "onionSpeedScale": [
+            0.44
+          ],
+          "onionChaseSpeedScale": [
+            0.6,
+            0.66
+          ]
+        },
+        {
+          "arenaShape": "irregular",
+          "arenaRotationSpeed": -6,
+          "bulletBounces": 5,
+          "onionCount": 5,
+          "onionSpeedScale": [
+            0.44
+          ],
+          "onionChaseSpeedScale": [
+            0.62,
+            0.69
+          ]
+        },
+        {
+          "arenaShape": "circle",
+          "arenaRotationSpeed": 4,
+          "bulletBounces": 5,
+          "onionCount": 5,
+          "onionSpeedScale": [
+            0.44
+          ],
+          "onionChaseSpeedScale": [
+            0.64,
+            0.72
+          ]
+        }
+      ]
+    },
+    {
+      "pi": 2,
+      "levels": [
+        {
+          "arenaShape": "rect",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 5,
+          "onionCount": 5,
+          "onionSpeedScale": [
+            0.46
+          ],
+          "onionChaseSpeedScale": [
+            0.58,
+            0.66,
+            0.72
+          ]
+        },
+        {
+          "arenaShape": "pentagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 5,
+          "onionCount": 5,
+          "onionSpeedScale": [
+            0.46
+          ],
+          "onionChaseSpeedScale": [
+            0.6,
+            0.68,
+            0.74
+          ]
+        },
+        {
+          "arenaShape": "hexagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 5,
+          "onionCount": 5,
+          "onionSpeedScale": [
+            0.46
+          ],
+          "onionChaseSpeedScale": [
+            0.62,
+            0.7,
+            0.76
+          ]
+        },
+        {
+          "arenaShape": "diamond",
+          "arenaRotationSpeed": 10,
+          "bulletBounces": 6,
+          "onionCount": 6,
+          "onionSpeedScale": [
+            0.46
+          ],
+          "onionChaseSpeedScale": [
+            0.64,
+            0.72,
+            0.78
+          ]
+        },
+        {
+          "arenaShape": "octagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 6,
+          "onionCount": 6,
+          "onionSpeedScale": [
+            0.48
+          ],
+          "onionChaseSpeedScale": [
+            0.66,
+            0.74,
+            0.8
+          ]
+        },
+        {
+          "arenaShape": "irregular",
+          "arenaRotationSpeed": -8,
+          "bulletBounces": 6,
+          "onionCount": 6,
+          "onionSpeedScale": [
+            0.48
+          ],
+          "onionChaseSpeedScale": [
+            0.68,
+            0.77,
+            0.84
+          ]
+        },
+        {
+          "arenaShape": "circle",
+          "arenaRotationSpeed": 5,
+          "bulletBounces": 6,
+          "onionCount": 6,
+          "onionSpeedScale": [
+            0.48
+          ],
+          "onionChaseSpeedScale": [
+            0.7,
+            0.8,
+            0.86
+          ]
+        }
+      ]
+    },
+    {
+      "pi": 3,
+      "levels": [
+        {
+          "arenaShape": "rect",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 6,
+          "onionCount": 6,
+          "onionSpeedScale": [
+            0.5
+          ],
+          "onionChaseSpeedScale": [
+            0.64,
+            0.73,
+            0.8
+          ]
+        },
+        {
+          "arenaShape": "pentagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 6,
+          "onionCount": 6,
+          "onionSpeedScale": [
+            0.5
+          ],
+          "onionChaseSpeedScale": [
+            0.66,
+            0.75,
+            0.82
+          ]
+        },
+        {
+          "arenaShape": "hexagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 6,
+          "onionCount": 6,
+          "onionSpeedScale": [
+            0.5
+          ],
+          "onionChaseSpeedScale": [
+            0.68,
+            0.77,
+            0.84
+          ]
+        },
+        {
+          "arenaShape": "diamond",
+          "arenaRotationSpeed": 12,
+          "bulletBounces": 7,
+          "onionCount": 7,
+          "onionSpeedScale": [
+            0.5
+          ],
+          "onionChaseSpeedScale": [
+            0.7,
+            0.8,
+            0.88
+          ]
+        },
+        {
+          "arenaShape": "octagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 7,
+          "onionCount": 7,
+          "onionSpeedScale": [
+            0.52
+          ],
+          "onionChaseSpeedScale": [
+            0.72,
+            0.82,
+            0.9
+          ]
+        },
+        {
+          "arenaShape": "irregular",
+          "arenaRotationSpeed": -10,
+          "bulletBounces": 7,
+          "onionCount": 7,
+          "onionSpeedScale": [
+            0.52
+          ],
+          "onionChaseSpeedScale": [
+            0.74,
+            0.84,
+            0.94
+          ]
+        },
+        {
+          "arenaShape": "circle",
+          "arenaRotationSpeed": 6,
+          "bulletBounces": 7,
+          "onionCount": 7,
+          "onionSpeedScale": [
+            0.52
+          ],
+          "onionChaseSpeedScale": [
+            0.76,
+            0.87,
+            0.96
+          ]
+        }
+      ]
+    },
+    {
+      "pi": 4,
+      "levels": [
+        {
+          "arenaShape": "rect",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 7,
+          "onionCount": 7,
+          "onionSpeedScale": [
+            0.54
+          ],
+          "onionChaseSpeedScale": [
+            0.7,
+            0.8,
+            0.88,
+            0.96
+          ]
+        },
+        {
+          "arenaShape": "pentagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 7,
+          "onionCount": 7,
+          "onionSpeedScale": [
+            0.54
+          ],
+          "onionChaseSpeedScale": [
+            0.72,
+            0.82,
+            0.9,
+            0.98
+          ]
+        },
+        {
+          "arenaShape": "hexagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 7,
+          "onionCount": 7,
+          "onionSpeedScale": [
+            0.54
+          ],
+          "onionChaseSpeedScale": [
+            0.74,
+            0.84,
+            0.92,
+            1.0
+          ]
+        },
+        {
+          "arenaShape": "diamond",
+          "arenaRotationSpeed": 12,
+          "bulletBounces": 8,
+          "onionCount": 8,
+          "onionSpeedScale": [
+            0.56
+          ],
+          "onionChaseSpeedScale": [
+            0.76,
+            0.87,
+            0.96,
+            1.04
+          ]
+        },
+        {
+          "arenaShape": "octagon",
+          "arenaRotationSpeed": 0,
+          "bulletBounces": 8,
+          "onionCount": 8,
+          "onionSpeedScale": [
+            0.56
+          ],
+          "onionChaseSpeedScale": [
+            0.78,
+            0.9,
+            0.98,
+            1.06
+          ]
+        },
+        {
+          "arenaShape": "irregular",
+          "arenaRotationSpeed": -12,
+          "bulletBounces": 8,
+          "onionCount": 8,
+          "onionSpeedScale": [
+            0.56
+          ],
+          "onionChaseSpeedScale": [
+            0.8,
+            0.92,
+            1.0,
+            1.08
+          ]
+        },
+        {
+          "arenaShape": "circle",
+          "arenaRotationSpeed": 8,
+          "bulletBounces": 8,
+          "onionCount": 8,
+          "onionSpeedScale": [
+            0.56
+          ],
+          "onionChaseSpeedScale": [
+            0.82,
+            0.94,
+            1.04,
+            1.12
+          ]
+        }
+      ]
+    }
+  ]
+}

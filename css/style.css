@@ -1,0 +1,53 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #0f0f2f;
+  color: #ffe9b8;
+  font-family: monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+#crt-wrapper {
+  position: relative;
+  width: 70vw;
+  aspect-ratio: 16/10;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(127, 92, 255, 0.2);
+}
+
+/* Debug panel */
+#debug-panel {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  background: rgba(20, 20, 30, 0.9);
+  border: 1px solid #3a2b66;
+  border-radius: 12px;
+  padding: 12px;
+  color: #ffe9b8;
+  width: 260px;
+  font-size: 12px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 20px rgba(127,92,255,0.25);
+}
+
+#debug-panel h2 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  text-align: center;
+  color: #ffcc88;
+}
+
+#debug-panel label {
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 0;
+}
+
+#debug-panel input[type="range"] {
+  width: 100%;
+}

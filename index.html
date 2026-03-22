@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <title>ZIO LATTE! PIChan</title>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-X9DYW1QWK2"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-X9DYW1QWK2');
+  </script>
+
+  <link rel="stylesheet" href="css/game.css" id="game-css">
+</head>
+
+<body>
+  <div id="gameover-overlay" role="dialog" aria-modal="true">
+    <div id="gameover-box">
+      <div>Game Over</div>
+      <div id="gameover-score">Opinion: 0</div>
+      <div id="gameover-time">Time: 0.0s</div>
+      <div id="continue-info">
+        <span class="continue-label">Continues:</span>
+        <span id="continue-icons" aria-label="Continues remaining"></span>
+      </div>
+      <button id="continue-game" type="button">Continue</button>
+      <button id="play-again" type="button">Play Again</button>
+    </div>
+  </div>
+  <audio id="bgm" src="sounds/soundtrack.mp3" preload="auto" loop></audio>
+  <audio id="gameover-sfx" src="sounds/gameover.mp3" preload="auto"></audio>
+  <audio id="shot-sfx" src="sounds/pi.shot.mp3" preload="auto"></audio>
+  <audio id="bounce-sfx" src="sounds/bullet.bounce.mp3" preload="auto"></audio>
+  <audio id="onion-death-sfx" src="sounds/onion.death.mp3" preload="auto"></audio>
+  <audio id="levelup-sfx" src="sounds/levelup.mp3" preload="auto"></audio>
+  <div id="mobile-warning" role="dialog" aria-modal="true">
+    Apri questo gioco da un PC.
+  </div>
+  <div id="level-overlay" role="dialog" aria-modal="true">
+    <div id="level-box">
+      <div id="level-title">Level 1</div>
+      <img id="level-onion" alt="" />
+      <div id="level-info">Opinion: 0 | Time: 00:00:00</div>
+    </div>
+  </div>
+  <div id="version-overlay" role="dialog" aria-modal="true">
+    <div id="version-box">
+      <div>Nuova versione disponibile</div>
+      <div>Ricarico il gioco...</div>
+      <button id="version-reload" type="button">Ricarica ora</button>
+    </div>
+  </div>
+  <div id="loading-overlay" role="dialog" aria-modal="true">
+    <div id="loading-box">
+      <div id="loading-pi-runner" aria-hidden="true">
+        <img id="loading-pi" src="assets/pi_chan_dx_small.png" alt="" />
+      </div>
+      <div id="loading-spinner" aria-hidden="true"></div>
+      <div id="loading-status"></div>
+      <button id="loading-play" type="button">Play</button>
+    </div>
+  </div>
+  <div id="goto-overlay" role="dialog" aria-modal="true">
+    <div id="goto-panel">
+      <div id="goto-header">
+        <div id="goto-title">Goto Level</div>
+        <button id="goto-close" type="button">Close</button>
+      </div>
+      <div id="goto-table-wrap">
+        <table id="goto-table" aria-label="Levels Table">
+          <thead>
+            <tr>
+              <th>Level</th>
+              <th>Cycle</th>
+              <th>Arena</th>
+              <th>Bounces</th>
+              <th>Onions</th>
+              <th>Speed</th>
+              <th>Chase</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="goto-controls">
+        <input id="goto-input" type="number" min="1" placeholder="Level" />
+        <button id="goto-apply" type="button">Go</button>
+      </div>
+    </div>
+  </div>
+  <div id="nickname-overlay" role="dialog" aria-modal="true">
+    <div id="nickname-box">
+      <div id="nickname-title">you are</div>
+      <div id="nickname-value" aria-live="polite"></div>
+      <div id="nickname-error" aria-live="polite"></div>
+      <div>
+        <button id="nickname-regenerate" type="button">NOPE (3)</button>
+        <button id="nickname-apply" type="button">YEAH</button>
+      </div>
+    </div>
+  </div>
+  <div id="layout">
+    <div id="game-wrap">
+      <!-- MUST: dimensioni interne del canvas (vero buffer grafico) -->
+      <aside id="game-title" aria-label="Game Title">
+        <div class="title-line">an</div>
+        <div class="title-line" id="title-opinion-line"><span id="title-opinion" class="title-word">opinion</span></div>
+        <div class="title-line">without</div>
+        <div class="title-line" id="title-pi-line"><span id="title-pi" class="title-word">3.14</span></div>
+        <div class="title-line">is</div>
+        <div class="title-line">just</div>
+        <div class="title-line">an</div>
+        <div class="title-line is-white" id="title-onion-line"><span id="title-onion" class="title-word">onion</span></div>
+      </aside>
+      <canvas id="game" width="614" height="614"></canvas>
+    </div>
+    <aside id="players-panel" class="players-panel" aria-label="Players online">
+      <div class="players-panel__title">Players online</div>
+      <div id="players-list" class="players-panel__list" role="list"></div>
+    </aside>
+    <div id="opinion-float-layer" aria-hidden="true"></div>
+  </div>
+
+  <!-- Mobile controls: left FIRE button, right direction joystick -->
+  <div id="touch-controls" aria-hidden="true">
+    <button id="touch-fire" type="button" aria-label="Spara">SPARA</button>
+    <div id="touch-dpad" role="group" aria-label="Direzione">
+      <button id="touch-left" type="button" aria-label="Sinistra">◀</button>
+      <div id="touch-dpad-center" aria-hidden="true">
+        <button id="touch-up" type="button" aria-label="Su">▲</button>
+        <button id="touch-down" type="button" aria-label="Giù">▼</button>
+      </div>
+      <button id="touch-right" type="button" aria-label="Destra">▶</button>
+    </div>
+  </div>
+
+  <script>
+    window.BUILD_VERSION = "2026.03.21.1";
+    const loaderScript = document.createElement("script");
+    loaderScript.type = "module";
+    loaderScript.src = `js/loader.js?v=${encodeURIComponent(window.BUILD_VERSION)}`;
+    document.body.appendChild(loaderScript);
+  </script>
+</body>
+</html>
