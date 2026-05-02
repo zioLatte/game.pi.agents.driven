@@ -354,24 +354,14 @@ export class Onion {
 
     const spriteScale = (typeof window !== "undefined" && window.SPRITE_SCALE) ? window.SPRITE_SCALE : 1;
     const size = Math.round(this.r * 2.34 * this.drawScale * spriteScale);
-    const wobble = Math.sin(this.wigglePhase) * 1.6;
+    const wobble = Math.sin(this.wigglePhase) * 1.1;
 
     ctx.translate(this.x, this.y + wobble);
     ctx.rotate(this.visualAngle + Math.sin(this.wigglePhase * 0.65) * 0.03);
 
-    const glowAlpha = inChase ? 0.95 : 0.35;
-    ctx.shadowColor = inChase ? 'rgba(255, 95, 95, 0.9)' : 'rgba(255, 170, 90, 0.45)';
-    ctx.shadowBlur = inChase ? 16 : 8;
-
-    if (inChase) {
-      ctx.globalAlpha = alpha * 0.3;
-      ctx.strokeStyle = 'rgba(255, 110, 110, 0.9)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, this.r * this.drawScale * 0.95, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = alpha;
-    }
+    const glowAlpha = inChase ? 0.65 : 0.24;
+    ctx.shadowColor = inChase ? 'rgba(255, 95, 95, 0.65)' : 'rgba(255, 170, 90, 0.28)';
+    ctx.shadowBlur = inChase ? 10 : 5;
 
     if (this.sprite && this.sprite.complete) {
       ctx.drawImage(this.sprite, -size / 2, -size / 2, size, size);

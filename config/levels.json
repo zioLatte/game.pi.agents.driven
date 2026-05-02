@@ -71,7 +71,7 @@
         },
         {
           "arenaShape": "irregular",
-          "arenaRotationSpeed": -5,
+          "arenaRotationSpeed": 0,
           "bulletBounces": 4,
           "onionCount": 4,
           "onionSpeedScale": [

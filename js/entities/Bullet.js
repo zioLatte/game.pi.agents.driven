@@ -32,7 +32,7 @@ export class Bullet {
     this.alive = true;
     this.life = 0;
     this.trail = [];
-    this.maxTrail = 9;
+    this.maxTrail = 6;
   }
 
   onBounce() {
@@ -40,19 +40,15 @@ export class Bullet {
 
     if (Array.isArray(this.explosions)) {
       this.explosions.push(new Explosion(this.x, this.y, this.ctx, {
-        duration: 0.14,
-        maxRadius: 18,
+        duration: 0.1,
+        maxRadius: 14,
         innerColor: [255, 255, 240],
         midColor: [255, 220, 120],
         outerColor: [255, 150, 40],
-        shadowBlur: 12,
-        sparkCount: 4,
-        sparkLength: 10
+        shadowBlur: 8,
+        sparkCount: 3,
+        sparkLength: 7
       }));
-    }
-
-    if (typeof window !== "undefined" && window.addScreenShake) {
-      window.addScreenShake(0.04);
     }
 
     if (this.bounceCount <= 0) {
@@ -142,8 +138,8 @@ export class Bullet {
     for (let i = this.trail.length - 1; i >= 0; i -= 1) {
       const point = this.trail[i];
       const t = 1 - (i / Math.max(1, this.trail.length));
-      const alpha = this.fade * t * 0.28;
-      const radius = Math.max(1.4, this.r * (0.45 + t * 0.9));
+      const alpha = this.fade * t * 0.18;
+      const radius = Math.max(1.2, this.r * (0.4 + t * 0.7));
       ctx.globalAlpha = alpha;
       ctx.fillStyle = '#ffd36a';
       ctx.beginPath();

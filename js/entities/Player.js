@@ -199,22 +199,19 @@ export class Player {
       this.y + dirY * 20,
       this.ctx,
       {
-        duration: 0.12,
-        maxRadius: 22,
+        duration: 0.08,
+        maxRadius: 16,
         innerColor: [255, 255, 240],
         midColor: [255, 230, 120],
         outerColor: [255, 140, 30],
-        shadowBlur: 14,
-        sparkCount: 5,
-        sparkLength: 12
+        shadowBlur: 10,
+        sparkCount: 3,
+        sparkLength: 8
       }
     ));
 
     if (typeof window !== "undefined" && window.addScreenShake) {
-      window.addScreenShake(0.06);
-    }
-    if (typeof window !== "undefined" && window.triggerGameFlash) {
-      window.triggerGameFlash('rgba(255, 235, 180, 1)', 0.05);
+      window.addScreenShake(0.035);
     }
 
     if (window.playShotSfx) {
