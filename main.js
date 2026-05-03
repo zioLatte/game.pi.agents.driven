@@ -137,10 +137,10 @@ Promise.resolve(onlineService.init({ nickname, stats })).catch((e) => {
 });
 const PI_START_LEVEL = {
   0: 1,
-  1: 8,
-  2: 15,
-  3: 22,
-  4: 29
+  1: 2,
+  2: 3,
+  3: 4,
+  4: 5
 };
 const ASSET_VERSION = window.ASSET_VERSION || window.BUILD_VERSION || null;
 
@@ -442,14 +442,15 @@ function buildGotoRows() {
     const levels = Array.isArray(entry.levels) ? entry.levels : [];
     for (const levelEntry of levels) {
       const arenaShape = levelEntry?.arenaShape ?? entry?.arenaShape ?? "rect";
-      const rotation = Number(levelEntry?.arenaRotationSpeed ?? entry?.arenaRotationSpeed) || 0;
-      const arenaLabel = rotation ? `${arenaShape} (${rotation > 0 ? "+" : ""}${rotation}°/s)` : arenaShape;
+      const maxAlive = Number(levelEntry?.maxAliveOnions) || 0;
+      const totalOnions = Number(levelEntry?.totalOnions) || 0;
+      const spawnIntervalMs = Number(levelEntry?.spawnIntervalMs) || 0;
       rows.push({
         level: levelCounter,
-        pi: entry?.pi ?? 0,
-        arena: arenaLabel,
+        pi: `Wave ${levelCounter}`,
+        arena: arenaShape,
         bounces: levelEntry?.bulletBounces ?? 0,
-        onions: levelEntry?.onionCount ?? 0,
+        onions: `${maxAlive}/${totalOnions} @ ${spawnIntervalMs}ms`,
         speed: formatScaleList(levelEntry?.onionSpeedScale ?? []),
         chase: formatScaleList(levelEntry?.onionChaseSpeedScale ?? [])
       });
@@ -662,10 +663,8 @@ function showLevelOverlay(level) {
   const applyOverlay = () => {
     levelOverlayPending = false;
     const levelCfg = levelManager.getLevelConfig(level);
-    const spin = Number(levelCfg?.arenaRotationSpeed) || 0;
-    const spinLabel = spin ? ` | Spin: ${spin > 0 ? "+" : ""}${spin}°/s` : "";
-    levelTitleEl.textContent = `Level ${Math.max(1, level)} · ${levelCfg?.arenaShape || "rect"}`;
-    levelInfoEl.textContent = `Opinion: ${state.score} | Time: ${formatTime(state.gameTime)} | Cycle: ${(levelCfg?.pressureIndex ?? 0) + 1} | Shape step: ${levelCfg?.levelInCycle ?? 1}/${levelCfg?.cycleLength ?? 1}${spinLabel}`;
+    levelTitleEl.textContent = `Wave ${Math.max(1, level)} · ${levelCfg?.arenaShape || "rect"}`;
+    levelInfoEl.textContent = `Opinion: ${state.score} | Time: ${formatTime(state.gameTime)} | Onions: ${levelCfg?.maxAliveOnions ?? 0}/${levelCfg?.totalOnions ?? 0} | Cadence: ${levelCfg?.spawnIntervalMs ?? 0}ms`;
     const levelOnionEl = document.getElementById("level-onion");
     if (levelOnionEl) {
       levelOnionDirection = 1;
@@ -773,10 +772,6 @@ function update(dt, now) {
   screenFx.offsetX = shakeStrength > 0.01 ? (Math.random() * 2 - 1) * shakeStrength : 0;
   screenFx.offsetY = shakeStrength > 0.01 ? (Math.random() * 2 - 1) * shakeStrength : 0;
   screenFx.flashAlpha = Math.max(0, screenFx.flashAlpha - dt * 1.6);
-  if (levelManager.arena?.update) {
-    levelManager.arena.update(dt);
-  }
-
   // 1) tempo
   state.gameTime += dt;
   if (!isOverlayActive() && !isPaused) {
@@ -817,7 +812,9 @@ function update(dt, now) {
 
   // 3) onions
   for (const o of onions) o.update(dt, now);
-  onions = onions.filter(o => o.alive);
+  onions = levelManager.removeInactiveOnions();
+  levelManager.updateWave(now);
+  onions = levelManager.getOnions();
 
   // 3b) collisioni BULLET → PLAYER (game over)
   let hitPlayer = false;
@@ -840,8 +837,8 @@ function update(dt, now) {
     return;
   }
 
-  // level up quando tutte le onion sono sparite
-  if (onions.length === 0) {
+  // level up quando il budget della wave è esaurito e non restano onion visibili
+  if (levelManager.isWaveComplete()) {
     const nextLevel = levelManager.currentLevel + 1;
     addScreenShake(0.2);
     triggerGameFlash("rgba(255, 245, 210, 1)", 0.14);

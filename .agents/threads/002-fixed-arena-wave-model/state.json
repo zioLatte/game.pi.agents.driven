@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-002",
+  "thread_id": "002-fixed-arena-wave-model",
+  "thread_name": "fixed-arena-wave-model",
+  "thread_basename": "002-fixed-arena-wave-model",
+  "title": "Fixed-arena finite wave model v1",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "waves",
+  "task_level": "L2",
+  "patch_budget": "small",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "last_completed_owner": "review-maintainability-guard",
+  "expected_handoff_owner": null,
+  "current_owner_since": "2026-05-03 20:34 CEST",
+  "current_status_since": "2026-05-03 20:34 CEST",
+  "last_handoff_at": "2026-05-03 20:34 CEST",
+  "opened_at": "2026-05-03 08:11 CEST",
+  "last_updated_at": "2026-05-03 20:34 CEST",
+  "resolved_at": "2026-05-03 20:34 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/002-fixed-arena-wave-model/thread.md",
+  "state_file": ".agents/threads/002-fixed-arena-wave-model/state.json",
+  "log_file": ".agents/threads/002-fixed-arena-wave-model/log.jsonl",
+  "legacy_files": [
+    "docs/iterations/002/00_orchestrator_pass.md",
+    "docs/iterations/002/01_design_patch_spec.md",
+    "docs/iterations/002/02_implementation_patch_spec.md",
+    "docs/iterations/002/03_master_patch_brief.md",
+    "docs/iterations/002/04_build_report.md"
+  ],
+  "latest_log_id": "LOG-012",
+  "total_execution_minutes": 0,
+  "problem_statement": "Bootstrap canonical thread workflow around the already implemented iteration 002 fixed-arena wave model build without modifying gameplay code.",
+  "game_flow_context": "fixed arena / finite waves / active onion cap / spawn cadence / deterministic completion",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/templates/thread_template.md",
+    ".agents/templates/thread_state_template.json",
+    ".agents/templates/thread_log_template.jsonl",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    "docs/MASTER_STATE.md",
+    "docs/GAME_VISION.md",
+    "docs/CODEBASE_MAP.md",
+    "docs/iterations/002/00_orchestrator_pass.md",
+    "docs/iterations/002/01_design_patch_spec.md",
+    "docs/iterations/002/02_implementation_patch_spec.md",
+    "docs/iterations/002/03_master_patch_brief.md",
+    "docs/iterations/002/04_build_report.md"
+  ],
+  "approved_files": [
+    "config/levels.json",
+    "js/core/LevelManager.js",
+    "main.js",
+    "docs/iterations/002/04_build_report.md"
+  ],
+  "approved_runtime_files": [
+    "config/levels.json",
+    "js/core/LevelManager.js",
+    "main.js"
+  ],
+  "approved_workflow_files": [
+    ".agents/threads/002-fixed-arena-wave-model/thread.md",
+    ".agents/threads/002-fixed-arena-wave-model/state.json",
+    ".agents/threads/002-fixed-arena-wave-model/log.jsonl"
+  ],
+  "forbidden_files": [
+    "js/entities/Player.js",
+    "js/entities/Bullet.js",
+    "js/entities/Onion.js",
+    "js/ai/OnionAI.js",
+    "assets/**",
+    "sounds/**",
+    "css/**",
+    "online/network/presence files",
+    "nickname/lifecycle service files"
+  ],
+  "conditional_files_not_modified": [
+    "js/core/Arena.js"
+  ],
+  "modified_files_detected": {
+    "build_scope_detected": [
+      "config/levels.json",
+      "js/core/LevelManager.js",
+      "main.js",
+      "docs/iterations/002/04_build_report.md"
+    ],
+    "tracked_diff_name_only": [
+      ".codex/skills/build-agent/SKILL.md",
+      ".codex/skills/game-designer/SKILL.md",
+      ".codex/skills/gameplay-programmer/SKILL.md",
+      ".codex/skills/orchestrator/SKILL.md",
+      ".codex/skills/pixel-artist/SKILL.md",
+      "AGENTS.md",
+      "config/levels.json",
+      "js/core/LevelManager.js",
+      "main.js"
+    ],
+    "additional_dirty_paths_outside_build_review_scope": [
+      ".codex/skills/build-agent/SKILL.md",
+      ".codex/skills/game-designer/SKILL.md",
+      ".codex/skills/gameplay-programmer/SKILL.md",
+      ".codex/skills/orchestrator/SKILL.md",
+      ".codex/skills/pixel-artist/SKILL.md",
+      "AGENTS.md",
+      ".agents/**",
+      ".codex/skills/impact-regression-guard/**",
+      ".codex/skills/review-maintainability-guard/**",
+      ".codex/skills/task-orchestrator/**"
+    ]
+  },
+  "build_report_path": "docs/iterations/002/04_build_report.md",
+  "build_report_status": "READY_TO_TEST",
+  "validated_decisions": [
+    "Runtime arena rotation is rejected for this model.",
+    "Difficulty uses fixed arena, capped active pressure, finite wave budget, replacement cadence, existing onion pressure tuning, and deterministic completion.",
+    "LevelManager owns wave lifecycle.",
+    "main.js integrates with LevelManager-owned wave state.",
+    "Player, Bullet, Onion, and OnionAI remain untouched."
+  ],
+  "draft_assumptions_in_play": [
+    "The existing build report accurately records validation commands and build scope.",
+    "Dirty files outside the runtime build scope belong to workflow/setup changes and must be reviewed separately if relevant.",
+    "LOG-007 impact-regression-guard approval with notes is accepted for maintainability review routing.",
+    "The human prompt supplied the review-maintainability-guard verdict as NEEDS_REWORK validation-only; no separate persisted reviewer LOG existed before LOG-009.",
+    "LOG-010 records browser checklist validation-only results as 13 PASS / 0 FAIL with no runtime/config changes requested.",
+    "The human prompt supplied the final review-maintainability-guard verdict as APPROVE_WITH_NOTES for LOG-012 closure."
+  ],
+  "current_direction": [
+    "Closed DONE after final review-maintainability-guard verdict APPROVE_WITH_NOTES.",
+    "No runtime/config fixes requested because LOG-010 reports no browser failures.",
+    "Dirty runtime-scope and workflow-scope concerns remain separated from iteration 002 closure."
+  ],
+  "explicit_non_goals": [
+    "No new runtime build.",
+    "No gameplay fixes.",
+    "No config edits.",
+    "No edits to LevelManager or main.js.",
+    "No changes to AGENTS.md or skill files."
+  ],
+  "required_validations": [
+    "Review existing recorded validation in docs/iterations/002/04_build_report.md.",
+    "LOG-010 records browser checklist result: 13 PASS / 0 FAIL.",
+    "Final review-maintainability-guard verdict recorded as APPROVE_WITH_NOTES.",
+    "If later code changes occur, rerun JSON parse and JS syntax checks for touched files."
+  ],
+  "human_test_checklist": [
+    "Start Wave 1 and confirm one onion, static arena, no rotation.",
+    "Wait in Wave 1 and confirm cap prevents extra spawn.",
+    "Kill first Wave 1 onion and confirm delayed queued replacement.",
+    "Reach Wave 2 cap and confirm no third active onion.",
+    "Clear a wave and confirm deterministic transition with no extra spawn.",
+    "Use goto for Wave 4 or Wave 5 and confirm active cap never exceeds 3.",
+    "Confirm overlay/goto do not display spin or rotation language.",
+    "Confirm score remains +1 per onion kill.",
+    "Resize during a wave and confirm constraints remain stable."
+  ],
+  "next_required_steps": [],
+  "open_risks": [
+    "LOG-010 browser validation was automated/headless, not a subjective human visual playthrough.",
+    "main.js onion lifecycle integration can affect update, draw, collision, scoring, and completion order.",
+    "Cleanup/completion ordering can regress deterministic completion or visible cap behavior.",
+    "Replacement cadence may feel slower because it is measured after pressure slot opens.",
+    "After Wave 5, fallback behavior reuses the last config if play continues.",
+    "index.html table headers may remain generic because it was outside approved build scope.",
+    "Larger totalOnions changes score volume while keeping per-kill scoring.",
+    "Dirty files outside the runtime build scope exist and must not be conflated with iteration 002 runtime review."
+  ],
+  "artifacts": [
+    ".agents/threads/002-fixed-arena-wave-model/thread.md",
+    ".agents/threads/002-fixed-arena-wave-model/state.json",
+    ".agents/threads/002-fixed-arena-wave-model/log.jsonl",
+    "docs/iterations/002/04_build_report.md"
+  ],
+  "solution_applied": [
+    "Canonical thread workflow files created for the already implemented v1 fixed-arena wave model.",
+    "No gameplay/config/build-report files modified by this bootstrap.",
+    "LOG-010 validation-only browser checklist recorded 13 PASS / 0 FAIL with no runtime/config changes requested.",
+    "Final review-maintainability-guard verdict recorded as APPROVE_WITH_NOTES.",
+    "Task closed DONE by task-orchestrator."
+  ],
+  "decision_log_summary": [
+    "LOG-001: orchestrator design reset.",
+    "LOG-002: game-designer spec.",
+    "LOG-003: gameplay-programmer spec.",
+    "LOG-004: final orchestrator master brief.",
+    "LOG-005: build-agent implementation.",
+    "LOG-006: workflow bootstrap routes to impact-regression-guard.",
+    "LOG-007: impact-regression-guard approves for maintainability review with notes.",
+    "LOG-008: task-orchestrator records LOG-007 and routes to review-maintainability-guard.",
+    "LOG-009: task-orchestrator records review-maintainability-guard verdict NEEDS_REWORK validation-only and routes to build-agent for manual browser validation.",
+    "LOG-010: build-agent records validation-only browser checklist results: 13 PASS / 0 FAIL, no runtime/config changes.",
+    "LOG-011: task-orchestrator records LOG-010 and routes to review-maintainability-guard for final DONE gate verdict.",
+    "LOG-012: task-orchestrator records final review-maintainability-guard APPROVE_WITH_NOTES and closes DONE."
+  ]
+}

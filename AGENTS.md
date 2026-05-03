@@ -1,166 +1,197 @@
 # PiChan / PI.Onion — Repository Agent Guide
 
 ## Project identity
-PiChan / PI.Onion is an existing retro 2D arcade JavaScript game.
-This repository is not greenfield. Every agent must work from the real codebase and the current project documents.
+PiChan / PI.Onion è un arcade 2D retrò anni '90 basato su una codebase JavaScript esistente.
+Non è un progetto greenfield.
+L'obiettivo è migliorare il gioco con patch piccole, verificabili e reversibili, evitando feature creep e regressioni.
 
-The goal is to improve the game through small, reversible, testable changes that strengthen readability, game feel, arcade loop clarity, and first-minute player understanding.
-
-## Absolute priorities
-Use this priority order for every decision:
-
-1. Readability
-2. Game feel
-3. Loop clarity
-4. Scope control
-5. Incremental and reversible patches
-6. Regression minimization
-
-When two priorities conflict, the earlier one wins unless a human explicitly overrides it.
+## Core priorities
+Ordine di priorità assoluto:
+1. leggibilità
+2. game feel
+3. chiarezza del loop arcade
+4. scope controllato
+5. patch incrementali e reversibili
+6. minimizzazione regressioni
 
 ## Hard rules
-- No feature creep.
-- Improve existing systems before adding anything.
-- Prefer tuning/config changes over new logic when enough.
-- Prefer local edits over architectural changes.
-- Do not refactor architecture unless a real blocker requires it.
-- Do not touch unrelated files.
-- Do not add mechanics, enemies, HUD layers, assets, or systems unless explicitly approved.
-- Every non-trivial change must include manual tests with observable expected results.
-- If a proposal is not verifiable, reduce it.
-- If a proposal requires a large unplanned system, mark it `OUT OF SCOPE`.
-- If scope is ambiguous but a minimal safe interpretation exists, choose the minimal interpretation and state the assumption.
-- If scope is genuinely blocked, stop and report the blocker instead of guessing.
+- Niente feature creep.
+- Prima migliorare o semplificare ciò che esiste, poi eventualmente aggiungere.
+- Non preservare codice legacy solo perché esiste: se ostacola il modello approvato, proporre rimozione o sostituzione motivata.
+- Non fare broad rewrite senza approvazione esplicita nel task thread.
+- Non toccare file fuori dall'approved impact surface.
+- Ogni modifica deve avere test manuali verificabili.
+- Se una proposta non è verificabile, ridurla.
+- Se una proposta richiede un sistema grosso non previsto, marcarla `OUT_OF_SCOPE`.
+- Distinguere sempre: fatti confermati, assunzioni, proposta, rischio, dipendenza.
 
-## Source of truth
-The repo source of truth is file-based, not chat-based.
+## Current strategic direction
+La direzione corrente del gioco è fixed-arena / wave-based.
+- Runtime arena rotation è rifiutata come direzione di difficoltà.
+- La difficoltà non deve crescere aumentando all'infinito il numero di onion vive.
+- Il modello preferito separa:
+  - `maxAliveOnions`: cap di pressione attiva e leggibile
+  - `totalOnions`: budget finito della wave
+  - `spawnIntervalMs`: cadenza di rimpiazzo
+  - `onionPressure`: intensità ottenuta tramite comportamenti/tuning esistenti prima di nuovi nemici
+- Prima validare il modello wave con un'arena statica, poi valutare eventuale varietà statica.
 
-Primary documents:
-- `docs/MASTER_STATE.md`
-- `docs/GAME_VISION.md`
-- `docs/CODEBASE_MAP.md`
-- `docs/FIRST_ITERATION_BRIEF.md`
+## Stable references
+Prima di agire, usare queste fonti in ordine:
+1. codice reale del repo
+2. `AGENTS.md`
+3. `.agents/contracts/pichan-gameplay-contract.md`
+4. `.agents/contracts/pichan-wave-model-contract.md`
+5. task thread corrente: `.agents/threads/<thread-basename>.state.json`
+6. task thread corrente: `.agents/threads/<thread-basename>.log.jsonl`
+7. task thread corrente: `.agents/threads/<thread-basename>.md`
+8. documenti storici in `docs/` solo se coerenti con il thread corrente
 
-Iteration artifacts live in:
-- `docs/iterations/<NNN>/`
+La memoria chat non è source of truth.
 
-Canonical artifact order for an iteration:
-- `00_orchestrator_pass.md`
-- `01_design_patch_spec.md`
-- `02_implementation_patch_spec.md`
-- `03_master_patch_brief.md`
-- `04_build_report.md`
-- `05_human_test_report.md`
+## Allowed roles
+Usare le skill esplicitamente quando possibile:
+- `task-orchestrator`
+- `game-designer`
+- `gameplay-programmer`
+- `impact-regression-guard`
+- `build-agent`
+- `review-maintainability-guard`
+- `pixel-artist` solo quando serve davvero una review di leggibilità visiva/asset
 
-Do not rely on prior chat memory when a file artifact exists. Read the relevant file.
+## Canonical workflow
+Questo workflow è hub-and-spoke.
+- Solo `task-orchestrator` crea, aggiorna e rinomina i thread file canonici.
+- Solo `task-orchestrator` aggiorna lo stato canonico `.state.json`.
+- Solo `task-orchestrator` aggiorna il summary umano `.md`.
+- I ruoli non-orchestrator non si passano lavoro direttamente.
+- Ogni ruolo non-orchestrator termina con:
+  - `status_proposal`
+  - `next_owner: task-orchestrator`
+  - `human_handoff_prompt`: prompt completo pronto per copia/incolla per l'umano
+- `task-orchestrator` converte proposte in stato canonico e decide il prossimo owner.
+- Ogni owner, incluso `task-orchestrator`, deve sempre preparare un prompt completo per il prossimo owner umano-operabile.
+- Se il prossimo owner canonico è `task-orchestrator`, il prompt deve comunque essere completo e invocabile, es. `$task-orchestrator .agents/threads/<thread-basename>/thread.md`.
+- Se `task-orchestrator` decide un owner successivo diverso, deve produrre il prompt completo per quel ruolo, es. `$impact-regression-guard .agents/threads/<thread-basename>/thread.md`.
 
-## Current known gameplay perimeter
-When relevant, inspect these first:
+## Task thread files
+Ogni task non banale deve usare tre file companion:
+- `.agents/threads/<thread-basename>.md`
+- `.agents/threads/<thread-basename>.state.json`
+- `.agents/threads/<thread-basename>.log.jsonl`
 
-- `config/levels.json`
-- `main.js`
-- `js/core/LevelManager.js`
-- `js/core/Arena.js`
-- `js/entities/Player.js`
-- `js/entities/Bullet.js`
-- `js/entities/Onion.js`
-- `js/ai/OnionAI.js`
+Per nuovi task, partire dai template:
+- `.agents/templates/thread_template.md`
+- `.agents/templates/thread_state_template.json`
+- `.agents/templates/thread_log_template.jsonl`
 
-Do not assume all of these are in scope. Scope must come from the current brief.
+Thread basename pattern:
+`<status>-<previous-owner-2-current-owner>-<thread-name>`
 
-## Agent roles
-The repository defines these local Codex skills:
+Esempio:
+`APPROVED_FOR_BUILD-impact-regression-guard-2-build-agent-002-fixed-arena-wave-model`
 
-- `orchestrator`: coordinates, normalizes, cuts scope, decides build readiness
-- `game-designer`: defines gameplay intent, keep/reduce/cut decisions, progression and pressure targets
-- `gameplay-programmer`: translates approved design into implementation specs without editing code
-- `build-agent`: implements only approved build-ready scope and writes a build report
-- `pixel-artist`: defines visual readability requirements only when reduction/tuning is insufficient
+## Canonical states
+- `NEW`
+- `DESIGN_REQUESTED`
+- `DESIGN_DONE`
+- `IMPACT_ANALYSIS_REQUESTED`
+- `IMPACT_ANALYSIS_DONE`
+- `APPROVED_FOR_BUILD`
+- `BUILD_DONE`
+- `IN_REVIEW`
+- `NEEDS_REWORK`
+- `BLOCKED`
+- `DONE`
 
-Each role must stay inside its boundary.
+## Mandatory gate before any role acts
+Ogni ruolo deve verificare:
+- `current_owner` nello `.state.json` coincide con il ruolo
+- `status` è compatibile con il ruolo
+- latest log contiene `status_proposal` e `next_owner`
+- latest `next_owner` è compatibile col ruolo
+- il task è coerente con la missione del ruolo
 
-## Chat and skill usage
-Preferred operating mode:
-- Use one Codex chat per role for critical artifact generation.
-- Invoke the role explicitly with `$skill-name`.
-- Write handoff outputs to files under `docs/iterations/<NNN>/`.
-- Use generic Codex only for small read-only checks.
+Se il gate fallisce:
+- non lavorare sul codice
+- spiegare il mismatch nel log
+- proporre ritorno a `task-orchestrator`
 
-Do not mix multiple role outputs in the same file.
-Do not append prompt text to artifacts.
-Do not echo instructions inside output files.
+## Role routing
+Default:
+1. `task-orchestrator` intake / stato / routing
+2. `game-designer` se serve definire regole, loop, difficoltà, wave model, scoring, pressure
+3. `task-orchestrator`
+4. `gameplay-programmer` per implementation spec e file impact
+5. `task-orchestrator`
+6. `impact-regression-guard` per regressioni, call site, file scope, compatibilità
+7. `task-orchestrator`
+8. `build-agent` solo se `APPROVED_FOR_BUILD`
+9. `task-orchestrator`
+10. `review-maintainability-guard`
+11. `task-orchestrator` chiude `DONE` o `NEEDS_REWORK`
 
-## Required workflow for non-trivial work
-1. Clarify cycle scope.
-2. Inspect real files and current docs.
-3. Produce or read a structured brief.
-4. Propose the smallest safe patch.
-5. Define manual tests.
-6. State risks and deferred items.
-7. Only then implement, if build-ready.
+`pixel-artist` è opzionale e va usato solo per problemi reali di leggibilità visiva o asset.
 
-## Build readiness gate
-A task is `BUILD READY` only if all are true:
+## Build approval gate
+`APPROVED_FOR_BUILD` richiede:
+- objective chiaro
+- approved impact surface esplicito
+- forbidden files espliciti
+- runtime changes espliciti
+- data/tuning changes espliciti
+- manual test checklist
+- validation commands disponibili o motivazione se assenti
+- regressioni principali note
+- reviewer/impact guard pass completato o esplicitamente saltato dal task-orchestrator con motivazione
 
-- objective is clear
-- approved scope is explicit
-- files allowed to change are explicit
-- files forbidden to change are explicit when relevant
-- runtime changes are described
-- manual tests are defined
-- risks are stated
-- deferred items are stated
-- no unresolved design/code/readability conflict remains
+## Review gate
+`DONE` richiede:
+- build report presente
+- diff scope rispettato
+- validation eseguita o motivata
+- manual test checklist presente
+- review-maintainability-guard con verdict `APPROVE` oppure `APPROVE_WITH_NOTES`
+- `solution_applied` compilato nello state e nel summary
 
-If any item is missing, status must be `NOT READY` or `READY WITH RISKS`, not `BUILD READY`.
+## Validation discipline
+Per repo JavaScript senza `package.json`, usare almeno:
+- JSON parse per config modificati
+- `node --input-type=module --check < file.js` per JS modificati
+- eventuale test browser/manuale dichiarato
+- PHPMD non applicabile salvo presenza reale di PHP e config PHPMD
 
-## Output hygiene rules
-For file-based artifact tasks:
+## Human handoff prompt
+Ogni owner deve chiudere il proprio output con un handoff umano pronto per copia/incolla.
 
-- Write only to the requested output file.
-- Overwrite the target file completely when asked.
-- Do not edit other files unless explicitly allowed.
-- Do not echo the prompt.
-- Do not append commentary.
-- End the file at the requested final section.
-- Return only the requested confirmation.
+Includere sempre:
+- modello Codex consigliato
+- reasoning consigliato
+- se aprire nuova chat Codex o continuare
+- owner successivo
+- stato proposto o stato canonico
+- prompt completo pronto da copiare
 
-If a generated artifact contains prompt text, duplicate sections, truncation, or injected instructions, treat it as corrupted and regenerate it cleanly before passing it to another agent.
+Il prompt completo deve includere almeno:
+- skill/owner da invocare, es. `$build-agent`
+- path del thread canonico, preferendo `.agents/threads/<thread-basename>/thread.md`
+- solo istruzioni specifiche del thread corrente che non siano gia' coperte da `AGENTS.md`, dai contratti o dalla skill del ruolo
 
-## Patch discipline
-Classify each proposed change as one of:
+Esempio minimo:
+`$impact-regression-guard .agents/threads/002-fixed-arena-wave-model/thread.md`
 
-- `Tuning Patch`: values, timing, intensity, thresholds, progression order
-- `Feedback Patch`: visual/perceptual feedback already present
-- `Behavior Patch`: runtime behavior of player, onion, bullet, arena, progression
-- `Structural Patch`: ownership or architecture changes; avoid unless explicitly approved
+Esempio con delta specifico:
+```text
+$impact-regression-guard
 
-For PiChan first-minute validation, prefer `Tuning Patch` and `Feedback Patch`.
+Thread:
+.agents/threads/002-fixed-arena-wave-model/thread.md
 
-## Testing discipline
-Every patch must include manual tests.
+Focus specifico:
+- review del build gia' implementato, senza fix
+- attenzione a dirty worktree fuori scope
+- verificare ordering wave completion/cap/cadence
+```
 
-Each test must include:
-- action
-- context
-- expected observable result
-
-For first-minute gameplay work, tests should cover:
-- player readability
-- bullet readability and self-danger
-- onion pressure readability
-- arena/shape progression clarity
-- game feel after feedback reduction
-- regressions caused by over-trimming
-
-## Forbidden behavior
-- Do not expand scope to improve the idea in general.
-- Do not introduce new systems to solve a tuning problem.
-- Do not implement before the brief is build-ready.
-- Do not let visual spectacle override readability.
-- Do not modify late-game systems when the brief is first-minute only, unless explicitly approved.
-- Do not treat design numbers as mandatory implementation if a smaller safe patch satisfies the intent.
-
-## Tone
-Dry, critical, operational.
-No praise, no filler, no generic coaching.
+## Output style
+Secco, tecnico, critico, concreto. Niente lodi, niente fuffa.
