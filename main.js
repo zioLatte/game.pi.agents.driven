@@ -7,6 +7,7 @@ import { Input } from "./js/core/Input.js";
 import { LevelManager } from "./js/core/LevelManager.js";
 import { resolveCircleCircle } from "./js/core/physics.js";
 import { state } from "./js/core/state.js";
+import { AssetLoader, ARENA_ASSET_MANIFEST } from "./js/core/assets.js";
 import { createAudioController } from "./js/ui/audio.js";
 import { Explosion } from "./js/entities/Explosion.js";
 import { refreshWorldSize, buildBackground } from "./js/ui/canvas.js";
@@ -55,6 +56,17 @@ const titlePiLineEl = document.getElementById("title-pi-line");
 const titleOpinionLineEl = document.getElementById("title-opinion-line");
 const opinionFloatLayer = document.getElementById("opinion-float-layer");
 const playersPanelEl = document.getElementById("players-panel");
+const runHudEl = document.getElementById("run-hud");
+const runHudLevelEl = document.getElementById("run-hud-level");
+const runHudOpinionEl = document.getElementById("run-hud-opinion");
+const runHudWaveTextEl = document.getElementById("run-hud-wave-text");
+const runHudWaveBarEl = document.getElementById("run-hud-wave-bar");
+const runHudOnionsEl = document.getElementById("run-hud-onions");
+const runHudOnionsLeftEl = document.getElementById("run-hud-onions-left");
+const runHudQueuedEl = document.getElementById("run-hud-queued");
+const runHudBoostEl = document.getElementById("run-hud-boost");
+const runHudDotEl = document.getElementById("run-hud-dot");
+const levelToastEl = document.getElementById("level-toast");
 const touchControlsEl = document.getElementById("touch-controls");
 const touchFireBtnEl = document.getElementById("touch-fire");
 const touchUpBtnEl = document.getElementById("touch-up");
@@ -62,11 +74,17 @@ const touchDownBtnEl = document.getElementById("touch-down");
 const touchLeftBtnEl = document.getElementById("touch-left");
 const touchRightBtnEl = document.getElementById("touch-right");
 const LEVEL_START_DELAY_MS = 1400;
+const LEVEL_TOAST_DURATION_MS = 1300;
+const LEVELUP_SFX_FADE_DELAY_MS = 900;
+const LEVELUP_SFX_FADE_MS = 350;
 const MAX_CONTINUES = 3;
 let levelOverlayTimeoutId = null;
+let levelToastTimeoutId = null;
+let levelupSfxFadeTimeoutId = null;
 let lastChaseEndTime = 0;
 let continueUses = 0;
 let isPaused = false;
+let playersPanelLayoutVisible = false;
 let gotoResumeAllowed = false;
 const audio = createAudioController({
   bgmEl,
@@ -115,6 +133,107 @@ function triggerGameFlash(color = "rgba(255,255,255,1)", alpha = 0.08) {
   screenFx.flashAlpha = Math.max(screenFx.flashAlpha, Math.max(0, alpha));
 }
 
+function circlesOverlap(ax, ay, ar, bx, by, br) {
+  const dx = ax - bx;
+  const dy = ay - by;
+  const rr = ar + br;
+  return dx * dx + dy * dy < rr * rr;
+}
+
+function distanceSq(ax, ay, bx, by) {
+  const dx = ax - bx;
+  const dy = ay - by;
+  return dx * dx + dy * dy;
+}
+
+function resolveSpeedDotPickup(now) {
+  const dot = levelManager.getSpeedDot();
+  if (!dot) return;
+
+  const candidates = [];
+  if (circlesOverlap(player.x, player.y, player.r, dot.x, dot.y, dot.r)) {
+    candidates.push({
+      collector: player,
+      priority: 0,
+      distSq: distanceSq(player.x, player.y, dot.x, dot.y)
+    });
+  }
+
+  const targetOnion = dot.targetOnion;
+  if (
+    targetOnion
+    && targetOnion.alive
+    && !targetOnion.dying
+    && targetOnion.canTargetSpeedDot?.(now)
+    && circlesOverlap(targetOnion.x, targetOnion.y, targetOnion.r, dot.x, dot.y, dot.r)
+  ) {
+    candidates.push({
+      collector: targetOnion,
+      priority: 1,
+      distSq: distanceSq(targetOnion.x, targetOnion.y, dot.x, dot.y)
+    });
+  }
+
+  if (candidates.length === 0) return;
+
+  candidates.sort((a, b) => (a.distSq - b.distSq) || (a.priority - b.priority));
+  if (levelManager.consumeSpeedDot(candidates[0].collector, now)) {
+    addScreenShake(0.045);
+    triggerGameFlash("rgba(95, 235, 255, 1)", 0.08);
+  }
+}
+
+function drawSpeedDot(ctx, dot, now) {
+  if (!dot) return;
+  const pulse = 0.5 + 0.5 * Math.sin((now || 0) / 130);
+  const scale = 1 + pulse * 0.08;
+  const size = dot.r * 2.9;
+  const boltImage = getRenderAssetImage("sprites.speedBolt");
+
+  ctx.save();
+  ctx.translate(dot.x, dot.y);
+  ctx.scale(scale, scale);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.shadowColor = "rgba(255, 232, 80, 0.9)";
+  ctx.shadowBlur = 12 + pulse * 5;
+  if (boltImage) {
+    ctx.drawImage(boltImage, -size * 0.62, -size * 0.72, size * 1.24, size * 1.44);
+  } else {
+    ctx.fillStyle = "rgba(255, 235, 85, 0.95)";
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.05, -size * 0.62);
+    ctx.lineTo(size * 0.42, -size * 0.62);
+    ctx.lineTo(size * 0.12, -size * 0.08);
+    ctx.lineTo(size * 0.48, -size * 0.08);
+    ctx.lineTo(-size * 0.25, size * 0.68);
+    ctx.lineTo(-size * 0.04, size * 0.12);
+    ctx.lineTo(-size * 0.43, size * 0.12);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(40, 35, 12, 0.86)";
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = 0.42 + pulse * 0.2;
+  ctx.strokeStyle = "rgba(255, 255, 210, 0.86)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.58, 0);
+  ctx.lineTo(-size * 0.78, 0);
+  ctx.moveTo(size * 0.58, 0);
+  ctx.lineTo(size * 0.78, 0);
+  ctx.moveTo(0, -size * 0.72);
+  ctx.lineTo(0, -size * 0.92);
+  ctx.moveTo(0, size * 0.72);
+  ctx.lineTo(0, size * 0.92);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 window.addScreenShake = addScreenShake;
 window.triggerGameFlash = triggerGameFlash;
 const NICK_KEY = "pi_nickname";
@@ -143,6 +262,9 @@ const PI_START_LEVEL = {
   4: 5
 };
 const ASSET_VERSION = window.ASSET_VERSION || window.BUILD_VERSION || null;
+const renderAssets = new AssetLoader(ARENA_ASSET_MANIFEST, { version: ASSET_VERSION });
+const renderPatternCache = new Map();
+window.PICHAN_RENDER_ASSETS = renderAssets;
 
 function withAssetVersion(path) {
   if (!ASSET_VERSION) return path;
@@ -151,6 +273,10 @@ function withAssetVersion(path) {
 }
 
 window.withAssetVersion = withAssetVersion;
+
+function getRenderAssetImage(id) {
+  return renderAssets.getImage(id);
+}
 
 function isMobileDevice() {
   return /Mobi|Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -184,11 +310,9 @@ function startEngineIfReady() {
     stats.games += 1;
     localStorage.setItem(STATS_KEYS.games, String(stats.games));
   }
-  if (levelManager.currentLevel > stats.maxLevel) {
-    stats.maxLevel = levelManager.currentLevel;
-    localStorage.setItem(STATS_KEYS.maxLevel, String(stats.maxLevel));
-  }
+  syncMaxLevelStat();
   engine.start();
+  updateRunHud();
   updatePlayersPanelVisibility();
 }
 
@@ -289,6 +413,70 @@ function playLevelupSfx() {
 
 function fadeLevelupSfx(durationMs) {
   audio.fadeLevelupSfx(durationMs);
+}
+
+function syncMaxLevelStat() {
+  if (levelManager.currentLevel <= stats.maxLevel) return;
+  stats.maxLevel = levelManager.currentLevel;
+  localStorage.setItem(STATS_KEYS.maxLevel, String(stats.maxLevel));
+}
+
+function clearLevelToast({ fadeAudio = false } = {}) {
+  if (levelToastTimeoutId) {
+    clearTimeout(levelToastTimeoutId);
+    levelToastTimeoutId = null;
+  }
+  if (levelupSfxFadeTimeoutId) {
+    clearTimeout(levelupSfxFadeTimeoutId);
+    levelupSfxFadeTimeoutId = null;
+  }
+  if (levelToastEl) {
+    levelToastEl.classList.remove("visible");
+    levelToastEl.setAttribute("aria-hidden", "true");
+  }
+  if (fadeAudio) fadeLevelupSfx(LEVELUP_SFX_FADE_MS);
+}
+
+function scheduleLevelupSfxFade() {
+  if (levelupSfxFadeTimeoutId) clearTimeout(levelupSfxFadeTimeoutId);
+  levelupSfxFadeTimeoutId = setTimeout(() => {
+    levelupSfxFadeTimeoutId = null;
+    fadeLevelupSfx(LEVELUP_SFX_FADE_MS);
+  }, LEVELUP_SFX_FADE_DELAY_MS);
+}
+
+function showLevelToast(level) {
+  clearLevelToast();
+  scheduleLevelupSfxFade();
+
+  if (!levelToastEl) return;
+  levelToastEl.textContent = `Wave ${Math.max(1, level)}`;
+  levelToastEl.setAttribute("aria-hidden", "false");
+  void levelToastEl.offsetWidth;
+  levelToastEl.classList.add("visible");
+
+  levelToastTimeoutId = setTimeout(() => {
+    levelToastTimeoutId = null;
+    levelToastEl.classList.remove("visible");
+    levelToastEl.setAttribute("aria-hidden", "true");
+  }, LEVEL_TOAST_DURATION_MS);
+}
+
+function updateRunHud() {
+  const progress = levelManager.getWaveProgress();
+  const percent = Math.round(progress.progressRatio * 100);
+  const boostRatio = player?.getSpeedBoostRemainingRatio?.(performance.now()) ?? 0;
+  const speedDot = levelManager.getSpeedDot();
+
+  if (runHudLevelEl) runHudLevelEl.textContent = String(progress.currentLevel);
+  if (runHudOpinionEl) runHudOpinionEl.textContent = String(state.score);
+  if (runHudWaveTextEl) runHudWaveTextEl.textContent = progress.isComplete ? "CLEAR" : `${percent}%`;
+  if (runHudWaveBarEl) runHudWaveBarEl.style.transform = `scaleX(${progress.progressRatio})`;
+  if (runHudOnionsEl) runHudOnionsEl.textContent = `${progress.clearedOnions}/${progress.totalOnions}`;
+  if (runHudOnionsLeftEl) runHudOnionsLeftEl.textContent = `${progress.remainingOnions} left`;
+  if (runHudQueuedEl) runHudQueuedEl.textContent = String(progress.queuedOnions);
+  if (runHudBoostEl) runHudBoostEl.textContent = boostRatio > 0 ? `${Math.ceil(boostRatio * 100)}%` : "READY";
+  if (runHudDotEl) runHudDotEl.textContent = speedDot ? "FIELD" : "WAIT";
 }
 
 function stopAllAudio() {
@@ -544,6 +732,7 @@ let onions = levelManager.getOnions();
 // ----------------------------------------------------------
 state.reset();
 pendingGameStart = true;
+updateRunHud();
 
 function resetGame(level = 1, resetState = true) {
   levelManager.loadLevel(level);
@@ -552,11 +741,13 @@ function resetGame(level = 1, resetState = true) {
   player.bulletMaxBounces = levelManager.getBulletBounceCount(level);
   if (resetState) state.reset();
   if (resetState) pendingGameStart = true;
+  updateRunHud();
 }
 
 function showGameOver() {
   hideGotoOverlay({ resume: false });
   hideLevelOverlay();
+  clearLevelToast({ fadeAudio: true });
   if (!gameoverOverlay) return;
   updatePlayersPanelVisibility();
   addScreenShake(0.24);
@@ -573,10 +764,7 @@ function showGameOver() {
     stats.maxScore = state.score;
     localStorage.setItem(STATS_KEYS.maxScore, String(stats.maxScore));
   }
-  if (levelManager.currentLevel > stats.maxLevel) {
-    stats.maxLevel = levelManager.currentLevel;
-    localStorage.setItem(STATS_KEYS.maxLevel, String(stats.maxLevel));
-  }
+  syncMaxLevelStat();
 }
 
 function formatTime(totalSeconds) {
@@ -722,6 +910,7 @@ function jumpToLevel(level) {
   hideGotoOverlay({ resume: false });
   hideGameOver();
   hideLevelOverlay();
+  clearLevelToast({ fadeAudio: true });
   resetGame(level, true);
   continueUses = 0;
   updateContinueButton();
@@ -743,19 +932,317 @@ function updatePlayersPanelVisibility() {
     if (playersPanelEl) {
       playersPanelEl.classList.remove("is-visible");
     }
+    layoutEl?.classList.remove("has-players-panel");
+    if (playersPanelLayoutVisible) {
+      playersPanelLayoutVisible = false;
+      requestAnimationFrame(() => applyWorldResize());
+    }
     return;
   }
   const shouldShow = (engine.running || isPaused) && !isOverlayActive();
   playersPanelEl.classList.toggle("is-visible", shouldShow);
+  layoutEl?.classList.toggle("has-players-panel", shouldShow);
+  if (playersPanelLayoutVisible !== shouldShow) {
+    playersPanelLayoutVisible = shouldShow;
+    requestAnimationFrame(() => applyWorldResize());
+  }
 }
 
 function updatePlayersPanelAlignment() {
-  if (!playersPanelEl || !onlineService.hasPlayersPanel || !canvas || !layoutEl) return;
+  if (!canvas || !layoutEl) return;
   const canvasRect = canvas.getBoundingClientRect();
   const layoutRect = layoutEl.getBoundingClientRect();
   const offsetTop = Math.max(0, Math.round(canvasRect.top - layoutRect.top));
-  playersPanelEl.style.marginTop = `${offsetTop}px`;
-  playersPanelEl.style.maxHeight = `${Math.max(0, Math.round(canvasRect.height))}px`;
+  const panelHeight = `${Math.max(0, Math.round(canvasRect.height))}px`;
+
+  if (runHudEl) {
+    runHudEl.style.marginTop = `${offsetTop}px`;
+    runHudEl.style.maxHeight = panelHeight;
+  }
+  if (playersPanelEl && onlineService.hasPlayersPanel) {
+    playersPanelEl.style.marginTop = `${offsetTop}px`;
+    playersPanelEl.style.maxHeight = panelHeight;
+  }
+}
+
+function getRenderPattern(ctx, image) {
+  if (!ctx || !image) return null;
+  const key = image.currentSrc || image.src;
+  const cached = renderPatternCache.get(key);
+  if (cached) return cached;
+  const pattern = ctx.createPattern(image, "repeat");
+  if (pattern) renderPatternCache.set(key, pattern);
+  return pattern;
+}
+
+function fillTexturedRect(ctx, assetId, x, y, width, height) {
+  const image = getRenderAssetImage(assetId);
+  const pattern = getRenderPattern(ctx, image);
+  if (!pattern) return false;
+
+  ctx.save();
+  ctx.translate(Math.floor(x), Math.floor(y));
+  ctx.fillStyle = pattern;
+  ctx.fillRect(0, 0, Math.ceil(width), Math.ceil(height));
+  ctx.restore();
+  return true;
+}
+
+function drawArenaPath(ctx, points) {
+  if (!points?.length) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.closePath();
+}
+
+function drawFallbackAsphalt(ctx, x, y, width, height) {
+  ctx.save();
+  const road = ctx.createLinearGradient(x, y, x, y + height);
+  road.addColorStop(0, "#30302f");
+  road.addColorStop(1, "#1b1c1b");
+  ctx.fillStyle = road;
+  ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = "rgba(255, 246, 190, 0.68)";
+  const dashW = Math.max(4, Math.floor(Math.min(width, height) * 0.04));
+  if (height >= width) {
+    const cx = x + width * 0.5 - dashW * 0.5;
+    for (let yy = y + 8; yy < y + height; yy += 44) ctx.fillRect(cx, yy, dashW, 20);
+  } else {
+    const cy = y + height * 0.5 - dashW * 0.5;
+    for (let xx = x + 8; xx < x + width; xx += 44) ctx.fillRect(xx, cy, 20, dashW);
+  }
+  ctx.restore();
+}
+
+function drawOutsideTerrain(ctx) {
+  const dirtReady = fillTexturedRect(ctx, "tiles.outsideDirt", 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+  if (!dirtReady) {
+    if (backgroundCanvas) {
+      ctx.drawImage(backgroundCanvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    } else {
+      ctx.fillStyle = "#1c1d18";
+      ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    }
+  }
+
+  const laneW = Math.max(58, WORLD_WIDTH * 0.15);
+  const laneH = Math.max(58, WORLD_HEIGHT * 0.15);
+  const asphaltReady = getRenderAssetImage("tiles.outsideAsphalt");
+  if (asphaltReady) {
+    fillTexturedRect(ctx, "tiles.outsideAsphalt", WORLD_WIDTH * 0.5 - laneW * 0.5, 0, laneW, WORLD_HEIGHT);
+    fillTexturedRect(ctx, "tiles.outsideAsphalt", 0, WORLD_HEIGHT * 0.5 - laneH * 0.5, WORLD_WIDTH, laneH);
+  } else {
+    drawFallbackAsphalt(ctx, WORLD_WIDTH * 0.5 - laneW * 0.5, 0, laneW, WORLD_HEIGHT);
+    drawFallbackAsphalt(ctx, 0, WORLD_HEIGHT * 0.5 - laneH * 0.5, WORLD_WIDTH, laneH);
+  }
+}
+
+function drawFallbackArenaFloor(ctx) {
+  ctx.fillStyle = "#111517";
+  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+  ctx.save();
+  ctx.globalAlpha = 0.42;
+  ctx.strokeStyle = "#283034";
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= WORLD_WIDTH; x += 32) {
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, WORLD_HEIGHT);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= WORLD_HEIGHT; y += 32) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(WORLD_WIDTH, y + 0.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawArenaFloor(ctx, arena) {
+  if (!arena?.points?.length) return;
+
+  ctx.save();
+  drawArenaPath(ctx, arena.points);
+  ctx.clip();
+  if (!fillTexturedRect(ctx, "tiles.arenaFloor", 0, 0, WORLD_WIDTH, WORLD_HEIGHT)) {
+    drawFallbackArenaFloor(ctx);
+  }
+  ctx.restore();
+}
+
+function getArenaGates(arena) {
+  if (!arena?.points?.length) return [];
+  const gates = [];
+  const points = arena.points;
+
+  for (let i = 0; i < points.length; i += 1) {
+    const p1 = points[i];
+    const p2 = points[(i + 1) % points.length];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 48) continue;
+
+    const normal = arena.normals?.[i] || { x: 0, y: 1 };
+    const tangentX = dx / length;
+    const tangentY = dy / length;
+    gates.push({
+      x: (p1.x + p2.x) * 0.5,
+      y: (p1.y + p2.y) * 0.5,
+      length: Math.min(92, Math.max(54, length * 0.22)),
+      wallLength: length,
+      angle: Math.atan2(dy, dx),
+      tangentX,
+      tangentY,
+      normalX: normal.x,
+      normalY: normal.y,
+      p1,
+      p2
+    });
+  }
+
+  return gates;
+}
+
+function drawWallRun(ctx, startX, width, thickness) {
+  if (width <= 0) return;
+  if (fillTexturedRect(ctx, "tiles.wallStraight", startX, -thickness * 0.5, width, thickness)) return;
+
+  ctx.fillStyle = "#68645e";
+  ctx.fillRect(startX, -thickness * 0.5, width, thickness);
+  ctx.fillStyle = "#949085";
+  ctx.fillRect(startX, -thickness * 0.5, width, 3);
+  ctx.fillStyle = "#30302d";
+  ctx.fillRect(startX, thickness * 0.5 - 4, width, 4);
+}
+
+function drawGate(ctx, gate, thickness) {
+  const horizontal = Math.abs(Math.cos(gate.angle)) >= Math.abs(Math.sin(gate.angle));
+  const image = getRenderAssetImage(horizontal ? "tiles.gateHorizontal" : "tiles.gateVertical");
+
+  if (image) {
+    ctx.save();
+    ctx.translate(gate.x, gate.y);
+    if (horizontal) {
+      ctx.drawImage(image, -gate.length * 0.5, -thickness * 0.62, gate.length, thickness * 1.24);
+    } else {
+      ctx.drawImage(image, -thickness * 0.62, -gate.length * 0.5, thickness * 1.24, gate.length);
+    }
+    ctx.restore();
+    return;
+  }
+
+  ctx.save();
+  ctx.translate(gate.x, gate.y);
+  ctx.rotate(gate.angle);
+  ctx.fillStyle = "#191b1d";
+  ctx.fillRect(-gate.length * 0.5, -thickness * 0.62, gate.length, thickness * 1.24);
+  ctx.fillStyle = "#f1cf68";
+  for (let x = -gate.length * 0.5 + 8; x < gate.length * 0.5 - 6; x += 16) {
+    ctx.fillRect(x, -thickness * 0.42, 7, thickness * 0.84);
+  }
+  ctx.strokeStyle = "#0a0a0a";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-gate.length * 0.5, -thickness * 0.62, gate.length, thickness * 1.24);
+  ctx.restore();
+}
+
+function drawWallCorner(ctx, x, y, size) {
+  const image = getRenderAssetImage("tiles.wallCorner");
+  ctx.save();
+  ctx.translate(x, y);
+  if (image) {
+    ctx.drawImage(image, -size * 0.5, -size * 0.5, size, size);
+  } else {
+    ctx.fillStyle = "#7a766e";
+    ctx.fillRect(-size * 0.5, -size * 0.5, size, size);
+    ctx.strokeStyle = "#292a28";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-size * 0.5, -size * 0.5, size, size);
+  }
+  ctx.restore();
+}
+
+function drawArenaWallsAndGates(ctx, arena, gates) {
+  if (!arena?.points?.length) return;
+  const thickness = Math.max(14, Math.min(22, WORLD_WIDTH * 0.032));
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.48)";
+  ctx.shadowBlur = 8;
+  for (const gate of gates) {
+    const gap = gate.length;
+    const leftWidth = (gate.wallLength - gap) * 0.5;
+    const rightStart = leftWidth + gap;
+
+    ctx.save();
+    ctx.translate(gate.p1.x, gate.p1.y);
+    ctx.rotate(gate.angle);
+    drawWallRun(ctx, 0, leftWidth, thickness);
+    drawWallRun(ctx, rightStart, gate.wallLength - rightStart, thickness);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  for (const gate of gates) {
+    drawGate(ctx, gate, thickness);
+  }
+
+  for (const point of arena.points) {
+    drawWallCorner(ctx, point.x, point.y, thickness * 1.1);
+  }
+}
+
+function drawQueuedOnionPreview(ctx, x, y, size, now, index) {
+  const image = getRenderAssetImage("sprites.onionQueued") || getRenderAssetImage("sprites.onionIdle");
+  const bob = Math.sin((now || 0) / 260 + index * 0.8) * 1.5;
+
+  ctx.save();
+  ctx.translate(Math.floor(x) + 0.5, Math.floor(y + bob) + 0.5);
+  ctx.globalAlpha = 0.9;
+  if (image) {
+    ctx.drawImage(image, -size * 0.5, -size * 0.5, size, size);
+  } else {
+    ctx.fillStyle = "#9f4e32";
+    ctx.beginPath();
+    ctx.arc(0, 2, size * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#d37a42";
+    ctx.beginPath();
+    ctx.arc(-size * 0.08, -size * 0.02, size * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#72b35f";
+    ctx.fillRect(-2, -size * 0.45, 4, size * 0.22);
+    ctx.strokeStyle = "#2b1a12";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 2, size * 0.32, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawQueuedOnionPreviews(ctx, gates, progress, now) {
+  if (!gates.length || !progress) return;
+  const queuedCount = Math.max(0, Number(progress.queuedOnions) || 0);
+  const size = Math.max(18, Math.min(30, WORLD_WIDTH * 0.046));
+
+  for (let i = 0; i < queuedCount; i += 1) {
+    const gate = gates[i % gates.length];
+    const row = Math.floor(i / gates.length);
+    const laneOffset = ((row % 3) - 1) * size * 0.78;
+    const depth = size * 0.9 + row * size * 0.72;
+    const outsideX = -gate.normalX;
+    const outsideY = -gate.normalY;
+    const x = gate.x + outsideX * depth + gate.tangentX * laneOffset;
+    const y = gate.y + outsideY * depth + gate.tangentY * laneOffset;
+    drawQueuedOnionPreview(ctx, x, y, size, now, i);
+  }
 }
 
 
@@ -815,6 +1302,7 @@ function update(dt, now) {
   onions = levelManager.removeInactiveOnions();
   levelManager.updateWave(now);
   onions = levelManager.getOnions();
+  levelManager.updateSpeedDot(now);
 
   // 3b) collisioni BULLET → PLAYER (game over)
   let hitPlayer = false;
@@ -843,10 +1331,10 @@ function update(dt, now) {
     addScreenShake(0.2);
     triggerGameFlash("rgba(255, 245, 210, 1)", 0.14);
     resetGame(nextLevel, false);
+    syncMaxLevelStat();
     playLevelupSfx();
-    fadeBgm(0, 800);
-    engine.stop();
-    showLevelOverlay(nextLevel);
+    showLevelToast(nextLevel);
+    updateRunHud();
     input.endFrame();
     return;
   }
@@ -902,6 +1390,9 @@ function update(dt, now) {
     if (!bullet.alive) continue;
   }
 
+  // 4b) collisioni SPEED DOT → PI-CHAN / ONION assegnata
+  resolveSpeedDotPickup(now);
+
   // 5) collisioni ONION ↔ PLAYER
   for (const o of onions) {
     if (!o.alive || o.dying) continue;
@@ -951,6 +1442,7 @@ function update(dt, now) {
     }
   }
 
+  updateRunHud();
   input.endFrame();
 }
 
@@ -959,79 +1451,32 @@ function update(dt, now) {
 // DRAW — grafica
 // ==========================================================
 function draw(now) {
+  ctx.imageSmoothingEnabled = false;
   ctx.globalCompositeOperation = "source-over";
   ctx.globalAlpha = 1;
   ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
   const arena = levelManager.arena;
-  const pulse = 0.5 + 0.5 * Math.sin((now || 0) / 320);
 
   ctx.save();
   ctx.translate(screenFx.offsetX, screenFx.offsetY);
 
   if (arena && arena.points.length) {
-    const pts = arena.points;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) {
-      ctx.lineTo(pts[i].x, pts[i].y);
-    }
-    ctx.closePath();
-    ctx.clip();
+    const gates = getArenaGates(arena);
+    const progress = levelManager.getWaveProgress();
 
-    if (backgroundCanvas) {
-      ctx.drawImage(backgroundCanvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    } else {
-      ctx.fillStyle = "#222";
-      ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    }
-
-    const aura = ctx.createRadialGradient(
-      WORLD_WIDTH * 0.5, WORLD_HEIGHT * 0.5, WORLD_WIDTH * 0.06,
-      WORLD_WIDTH * 0.5, WORLD_HEIGHT * 0.5, WORLD_WIDTH * 0.58
-    );
-    aura.addColorStop(0, `rgba(255, 245, 220, ${0.03 + pulse * 0.025})`);
-    aura.addColorStop(1, "rgba(255, 245, 220, 0)");
-    ctx.fillStyle = aura;
-    ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-
+    drawOutsideTerrain(ctx);
+    drawArenaFloor(ctx, arena);
+    drawArenaWallsAndGates(ctx, arena, gates);
+    drawQueuedOnionPreviews(ctx, gates, progress, now);
+    drawSpeedDot(ctx, levelManager.getSpeedDot(), now);
     onions.forEach((o) => o.draw(ctx, now));
-    player.draw(ctx);
-
-    const drawArenaPath = () => {
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) {
-        ctx.lineTo(pts[i].x, pts[i].y);
-      }
-      ctx.closePath();
-    };
-
-    ctx.strokeStyle = `rgba(255, 233, 184, ${0.14 + pulse * 0.06})`;
-    ctx.lineWidth = 12;
-    ctx.shadowColor = `rgba(255, 233, 184, ${0.55 + pulse * 0.2})`;
-    ctx.shadowBlur = 28 + pulse * 8;
-    drawArenaPath();
-    ctx.stroke();
-
-    ctx.strokeStyle = `rgba(255, 244, 220, ${0.48 + pulse * 0.18})`;
-    ctx.lineWidth = 3;
-    ctx.shadowColor = `rgba(255, 250, 235, ${0.78 + pulse * 0.16})`;
-    ctx.shadowBlur = 10;
-    drawArenaPath();
-    ctx.stroke();
-
-    ctx.restore();
+    player.draw(ctx, now);
   } else {
-    if (backgroundCanvas) {
-      ctx.drawImage(backgroundCanvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    } else {
-      ctx.fillStyle = "#222";
-      ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    }
+    drawOutsideTerrain(ctx);
+    drawSpeedDot(ctx, levelManager.getSpeedDot(), now);
     onions.forEach((o) => o.draw(ctx, now));
-    player.draw(ctx);
+    player.draw(ctx, now);
   }
 
   ctx.restore();
@@ -1044,25 +1489,6 @@ function draw(now) {
     ctx.restore();
   }
 }
-
-
-// ----------------------------------------------------------
-// HUD
-// ----------------------------------------------------------
-function drawHUD() {
-  ctx.save();
-  ctx.fillStyle = "#fff";
-  ctx.font = "16px monospace";
-
-  ctx.fillText(`Opinion: ${state.score}`, 10, 20);
-  ctx.fillText(`Onion Killed: ${state.onionsKilled}`, 10, 40);
-  ctx.fillText(`Shots Fired: ${state.shotsFired}`, 10, 60);
-
-  ctx.fillText(`Time: ${state.gameTime.toFixed(1)}s`, 10, 80);
-
-  ctx.restore();
-}
-
 
 // ==========================================================
 // ENGINE SETUP
@@ -1116,7 +1542,14 @@ function preloadImages(paths) {
   })));
 }
 
-await preloadImages(ASSET_IMAGES);
+await Promise.all([
+  preloadImages(ASSET_IMAGES),
+  renderAssets.loadAll()
+]);
+const missingRenderAssets = renderAssets.getMissing();
+if (missingRenderAssets.length > 0) {
+  console.info("[render-assets] optional PNG assets missing; using canvas fallbacks", missingRenderAssets);
+}
 assetsLoaded = true;
 startEngineIfReady();
 

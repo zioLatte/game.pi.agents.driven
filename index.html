@@ -106,6 +106,7 @@
       </div>
     </div>
   </div>
+  <div id="level-toast" class="level-toast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true"></div>
   <div id="layout">
     <div id="game-wrap">
       <!-- MUST: dimensioni interne del canvas (vero buffer grafico) -->
@@ -121,6 +122,44 @@
       </aside>
       <canvas id="game" width="614" height="614"></canvas>
     </div>
+    <aside id="run-hud" class="run-hud" aria-label="Run status">
+      <div class="run-hud__row">
+        <span>LV</span>
+        <strong id="run-hud-level">1</strong>
+      </div>
+      <div class="run-hud__row">
+        <span>OPINION</span>
+        <strong id="run-hud-opinion">0</strong>
+      </div>
+      <div class="run-hud__block">
+        <div class="run-hud__row">
+          <span>NEXT WAVE</span>
+          <strong id="run-hud-wave-text">0%</strong>
+        </div>
+        <div class="run-hud__meter" aria-hidden="true">
+          <div id="run-hud-wave-bar" class="run-hud__meter-fill"></div>
+        </div>
+      </div>
+      <div class="run-hud__block">
+        <div class="run-hud__row">
+          <span>ONIONS</span>
+          <strong id="run-hud-onions">0/0</strong>
+        </div>
+        <div id="run-hud-onions-left" class="run-hud__sub">0 left</div>
+      </div>
+      <div class="run-hud__row">
+        <span>QUEUE</span>
+        <strong id="run-hud-queued">0</strong>
+      </div>
+      <div class="run-hud__row">
+        <span>BOOST</span>
+        <strong id="run-hud-boost">READY</strong>
+      </div>
+      <div class="run-hud__row">
+        <span>BOLT</span>
+        <strong id="run-hud-dot">WAIT</strong>
+      </div>
+    </aside>
     <aside id="players-panel" class="players-panel" aria-label="Players online">
       <div class="players-panel__title">Players online</div>
       <div id="players-list" class="players-panel__list" role="list"></div>

@@ -6,6 +6,18 @@ import { Arena } from "./Arena.js";
 import { Onion } from "../entities/Onion.js";
 import { Player } from "../entities/Player.js";
 
+const SPEED_DOT_DEFAULTS = {
+  enabled: true,
+  radius: 10,
+  boostDurationMs: 3000,
+  boostSpeedMultiplier: 1.35,
+  firstSpawnDelayMsRange: [5000, 8000],
+  respawnDelayMsRange: [6000, 10000],
+  chaseOpportunityDistance: 170,
+  chaseImmediatePlayerDistance: 130,
+  chaseDotAdvantageRatio: 0.75
+};
+
 export class LevelManager {
   constructor(ctx, worldWidth = 960, worldHeight = 600, levelConfig = null) {
     this.ctx = ctx;
@@ -17,13 +29,18 @@ export class LevelManager {
     this.arena = null;
     this.currentLevel = 1;
     this.waveState = this.#createEmptyWaveState();
+    this.speedDotConfig = this.#resolveSpeedDotConfig(levelConfig?.speedDot);
+    this.speedDotState = this.#createSpeedDotState();
 
     this.piTable = Array.isArray(levelConfig?.piTable) ? levelConfig.piTable : [];
     this.#rebuildConfigIndex();
   }
 
   setConfig(levelConfig = null) {
+    this.#clearSpeedDotTargets();
     this.piTable = Array.isArray(levelConfig?.piTable) ? levelConfig.piTable : [];
+    this.speedDotConfig = this.#resolveSpeedDotConfig(levelConfig?.speedDot);
+    this.speedDotState = this.#createSpeedDotState();
     this.#rebuildConfigIndex();
   }
 
@@ -69,10 +86,12 @@ export class LevelManager {
   }
 
   clearLevel() {
+    this.#clearSpeedDotTargets();
     this.player = null;
     this.onions = [];
     this.arena = null;
     this.waveState = this.#createEmptyWaveState();
+    this.speedDotState = this.#createSpeedDotState();
   }
 
   #buildLevel() {
@@ -114,6 +133,18 @@ export class LevelManager {
 
   getOnions() {
     return this.onions;
+  }
+
+  getSpeedDot() {
+    const dot = this.speedDotState;
+    if (!dot?.active) return null;
+    return {
+      x: dot.x,
+      y: dot.y,
+      r: dot.r,
+      spawnedAt: dot.spawnedAt,
+      targetOnion: dot.targetOnion
+    };
   }
 
   getOnionCountForLevel(level = this.currentLevel) {
@@ -173,6 +204,62 @@ export class LevelManager {
     return this.onions;
   }
 
+  updateSpeedDot(now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    const dot = this.speedDotState;
+    const config = this.speedDotConfig;
+
+    if (!config.enabled || !this.player || !this.arena) {
+      this.#clearSpeedDotTargets();
+      this.speedDotState = this.#createSpeedDotState();
+      return null;
+    }
+
+    if (dot.active) {
+      const constrained = this.arena.constrainCircle(dot.x, dot.y, dot.r);
+      dot.x = constrained.x;
+      dot.y = constrained.y;
+      this.#assignSpeedDotTarget(frameNow);
+      return this.getSpeedDot();
+    }
+
+    if (!Number.isFinite(dot.nextSpawnAt)) {
+      dot.nextSpawnAt = frameNow + this.#randomDelay(config.firstSpawnDelayMsRange);
+      return null;
+    }
+
+    if (frameNow < dot.nextSpawnAt) return null;
+
+    this.#spawnSpeedDot(frameNow);
+    this.#assignSpeedDotTarget(frameNow);
+    return this.getSpeedDot();
+  }
+
+  consumeSpeedDot(collector, now = performance.now()) {
+    const dot = this.speedDotState;
+    if (!dot?.active || !collector || typeof collector.applySpeedBoost !== "function") {
+      return false;
+    }
+
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    const applied = collector.applySpeedBoost(
+      this.speedDotConfig.boostSpeedMultiplier,
+      this.speedDotConfig.boostDurationMs,
+      frameNow
+    );
+
+    if (!applied) return false;
+
+    dot.active = false;
+    dot.x = 0;
+    dot.y = 0;
+    dot.spawnedAt = 0;
+    dot.targetOnion = null;
+    dot.nextSpawnAt = frameNow + this.#randomDelay(this.speedDotConfig.respawnDelayMsRange);
+    this.#clearSpeedDotTargets();
+    return true;
+  }
+
   getPressureOnionCount() {
     return this.onions.filter((onion) => onion.alive || onion.dying).length;
   }
@@ -214,6 +301,30 @@ export class LevelManager {
     return { ...this.waveState };
   }
 
+  getWaveProgress() {
+    const activePressureCount = this.getPressureOnionCount();
+    const totalOnions = Math.max(0, Number(this.waveState.totalOnions) || 0);
+    const spawnedOnions = Math.max(0, Number(this.waveState.spawnedOnions) || 0);
+    const clearedOnions = Math.min(totalOnions, Math.max(0, spawnedOnions - activePressureCount));
+    const remainingOnions = Math.max(0, totalOnions - clearedOnions);
+    const queuedOnions = Math.max(0, totalOnions - spawnedOnions);
+    const progressRatio = totalOnions > 0 ? clearedOnions / totalOnions : 1;
+
+    return {
+      currentLevel: this.currentLevel,
+      maxAliveOnions: this.waveState.maxAliveOnions,
+      totalOnions,
+      spawnIntervalMs: this.waveState.spawnIntervalMs,
+      spawnedOnions,
+      activePressureCount,
+      clearedOnions,
+      remainingOnions,
+      queuedOnions,
+      progressRatio: Math.max(0, Math.min(1, progressRatio)),
+      isComplete: spawnedOnions >= totalOnions && activePressureCount === 0
+    };
+  }
+
   getChaseSpeedScaleForIndex(value, index = 0) {
     if (Array.isArray(value) && value.length > 0) {
       if (index < value.length) return value[index];
@@ -240,6 +351,146 @@ export class LevelManager {
       spawnedOnions: 0,
       pressureOpenSince: null
     };
+  }
+
+  #createSpeedDotState() {
+    return {
+      active: false,
+      x: 0,
+      y: 0,
+      r: this.speedDotConfig?.radius ?? SPEED_DOT_DEFAULTS.radius,
+      spawnedAt: 0,
+      nextSpawnAt: null,
+      targetOnion: null
+    };
+  }
+
+  #resolveSpeedDotConfig(raw = null) {
+    const readRange = (value, fallback) => {
+      if (!Array.isArray(value) || value.length < 2) return fallback;
+      const min = Number(value[0]);
+      const max = Number(value[1]);
+      if (!Number.isFinite(min) || !Number.isFinite(max)) return fallback;
+      return [Math.max(0, Math.min(min, max)), Math.max(0, Math.max(min, max))];
+    };
+
+    const radius = Number(raw?.radius);
+    const duration = Number(raw?.boostDurationMs);
+    const multiplier = Number(raw?.boostSpeedMultiplier);
+
+    return {
+      enabled: raw?.enabled !== false,
+      radius: Number.isFinite(radius) && radius > 0 ? radius : SPEED_DOT_DEFAULTS.radius,
+      boostDurationMs: Number.isFinite(duration) && duration > 0 ? duration : SPEED_DOT_DEFAULTS.boostDurationMs,
+      boostSpeedMultiplier: Number.isFinite(multiplier) && multiplier > 1 ? multiplier : SPEED_DOT_DEFAULTS.boostSpeedMultiplier,
+      firstSpawnDelayMsRange: readRange(raw?.firstSpawnDelayMsRange, SPEED_DOT_DEFAULTS.firstSpawnDelayMsRange),
+      respawnDelayMsRange: readRange(raw?.respawnDelayMsRange, SPEED_DOT_DEFAULTS.respawnDelayMsRange),
+      chaseOpportunityDistance: Number.isFinite(Number(raw?.chaseOpportunityDistance))
+        ? Math.max(0, Number(raw.chaseOpportunityDistance))
+        : SPEED_DOT_DEFAULTS.chaseOpportunityDistance,
+      chaseImmediatePlayerDistance: Number.isFinite(Number(raw?.chaseImmediatePlayerDistance))
+        ? Math.max(0, Number(raw.chaseImmediatePlayerDistance))
+        : SPEED_DOT_DEFAULTS.chaseImmediatePlayerDistance,
+      chaseDotAdvantageRatio: Number.isFinite(Number(raw?.chaseDotAdvantageRatio))
+        ? Math.max(0, Number(raw.chaseDotAdvantageRatio))
+        : SPEED_DOT_DEFAULTS.chaseDotAdvantageRatio
+    };
+  }
+
+  #randomDelay(range) {
+    const min = Number(range?.[0]) || 0;
+    const max = Number(range?.[1]) || min;
+    return min + Math.random() * Math.max(0, max - min);
+  }
+
+  #spawnSpeedDot(now) {
+    const dot = this.speedDotState;
+    const radius = this.speedDotConfig.radius;
+    const margin = radius + 12;
+    const playerClearance = (this.player?.r ?? 0) + radius + 40;
+    let best = null;
+
+    for (let i = 0; i < 8; i += 1) {
+      const x = margin + Math.random() * Math.max(1, this.worldWidth - margin * 2);
+      const y = margin + Math.random() * Math.max(1, this.worldHeight - margin * 2);
+      const candidate = this.arena.constrainCircle(x, y, radius);
+      best = candidate;
+
+      const dx = candidate.x - this.player.x;
+      const dy = candidate.y - this.player.y;
+      if (dx * dx + dy * dy >= playerClearance * playerClearance) break;
+    }
+
+    dot.active = true;
+    dot.x = best?.x ?? this.worldWidth / 2;
+    dot.y = best?.y ?? this.worldHeight / 2;
+    dot.r = radius;
+    dot.spawnedAt = now;
+    dot.nextSpawnAt = null;
+    dot.targetOnion = null;
+  }
+
+  #assignSpeedDotTarget(now) {
+    const dot = this.speedDotState;
+    if (!dot?.active) {
+      this.#clearSpeedDotTargets();
+      return null;
+    }
+
+    let best = null;
+    let bestDistSq = Infinity;
+    const target = {
+      x: dot.x,
+      y: dot.y,
+      r: dot.r,
+      chaseOpportunityDistance: this.speedDotConfig.chaseOpportunityDistance,
+      chaseImmediatePlayerDistance: this.speedDotConfig.chaseImmediatePlayerDistance,
+      chaseDotAdvantageRatio: this.speedDotConfig.chaseDotAdvantageRatio
+    };
+    const currentTarget = dot.targetOnion;
+    if (
+      currentTarget
+      && typeof currentTarget.canTargetSpeedDot === "function"
+      && currentTarget.canTargetSpeedDot(now, target)
+    ) {
+      const dx = currentTarget.x - dot.x;
+      const dy = currentTarget.y - dot.y;
+      best = currentTarget;
+      bestDistSq = (dx * dx + dy * dy) * 0.78;
+    }
+
+    for (const onion of this.onions) {
+      if (!onion || typeof onion.canTargetSpeedDot !== "function" || !onion.canTargetSpeedDot(now, target)) {
+        onion?.clearSpeedDotTarget?.();
+        continue;
+      }
+
+      const dx = onion.x - dot.x;
+      const dy = onion.y - dot.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < bestDistSq) {
+        best = onion;
+        bestDistSq = distSq;
+      }
+    }
+
+    for (const onion of this.onions) {
+      if (onion === best) {
+        onion.setSpeedDotTarget(target);
+      } else {
+        onion?.clearSpeedDotTarget?.();
+      }
+    }
+
+    dot.targetOnion = best;
+    return best;
+  }
+
+  #clearSpeedDotTargets() {
+    for (const onion of this.onions) {
+      onion?.clearSpeedDotTarget?.();
+    }
+    if (this.speedDotState) this.speedDotState.targetOnion = null;
   }
 
   #spawnQueuedOnion(config = this.getLevelConfig(this.currentLevel)) {

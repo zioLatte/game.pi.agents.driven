@@ -47,6 +47,10 @@ export class Player {
     this.recoilY = 0;
     this.squash = 0;
     this.hoverTime = Math.random() * Math.PI * 2;
+    this.speedBoostMultiplier = 1;
+    this.speedBoostUntil = 0;
+    this.speedBoostStartedAt = 0;
+    this.speedBoostDurationMs = 0;
   }
 
   #loadSprite(path) {
@@ -77,6 +81,7 @@ export class Player {
   }
 
   update(dt, input, now) {
+    const frameNow = now ?? performance.now();
     this.hoverTime += dt * 4;
     this.recoilX *= Math.max(0, 1 - dt * 10);
     this.recoilY *= Math.max(0, 1 - dt * 10);
@@ -118,8 +123,9 @@ export class Player {
       const m = Math.hypot(dx, dy) || 1;
       dx /= m;
       dy /= m;
-      this.x += dx * this.speed * dt;
-      this.y += dy * this.speed * dt;
+      const movementSpeed = this.getMovementSpeed(frameNow);
+      this.x += dx * movementSpeed * dt;
+      this.y += dy * movementSpeed * dt;
     }
 
     if (this.arena) {
@@ -150,6 +156,38 @@ export class Player {
 
     for (const e of this.explosions) e.update(dt);
     this.explosions = this.explosions.filter((e) => e.alive);
+  }
+
+  applySpeedBoost(multiplier, durationMs, now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    if (this.isSpeedBoosted(frameNow)) return false;
+
+    const boostMultiplier = Number(multiplier);
+    const boostDuration = Number(durationMs);
+    if (!Number.isFinite(boostMultiplier) || boostMultiplier <= 1) return false;
+    if (!Number.isFinite(boostDuration) || boostDuration <= 0) return false;
+
+    this.speedBoostMultiplier = boostMultiplier;
+    this.speedBoostStartedAt = frameNow;
+    this.speedBoostDurationMs = boostDuration;
+    this.speedBoostUntil = frameNow + boostDuration;
+    return true;
+  }
+
+  isSpeedBoosted(now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    return frameNow < this.speedBoostUntil;
+  }
+
+  getMovementSpeed(now = performance.now()) {
+    return this.speed * (this.isSpeedBoosted(now) ? this.speedBoostMultiplier : 1);
+  }
+
+  getSpeedBoostRemainingRatio(now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    if (!this.isSpeedBoosted(frameNow) || this.speedBoostDurationMs <= 0) return 0;
+    const remaining = this.speedBoostUntil - frameNow;
+    return Math.max(0, Math.min(1, remaining / this.speedBoostDurationMs));
   }
 
   shoot(now) {
@@ -225,9 +263,14 @@ export class Player {
     }
   }
 
-  draw(ctxOverride) {
+  draw(ctxOverride, now) {
     const ctx = ctxOverride || this.ctx;
     if (!ctx) return;
+    const frameNow = now ?? performance.now();
+    const boosted = this.isSpeedBoosted(frameNow);
+    const renderAssets = typeof window !== "undefined" ? window.PICHAN_RENDER_ASSETS : null;
+    const pipelineSprite = renderAssets?.getImage?.("sprites.pichanIdle") || null;
+    const boostRingSprite = renderAssets?.getImage?.("sprites.boostRing") || null;
 
     const spriteScale = (typeof window !== "undefined" && window.SPRITE_SCALE) ? window.SPRITE_SCALE : 1;
     const baseSize = Math.round(this.r * 3.15 * spriteScale);
@@ -240,12 +283,69 @@ export class Player {
     ctx.save();
     ctx.translate(px, py);
     ctx.scale(squashX, squashY);
-    ctx.filter = "saturate(1.5)";
-    ctx.shadowColor = 'rgba(255, 240, 180, 0.7)';
-    ctx.shadowBlur = 10;
+    ctx.filter = boosted ? "saturate(1.9) brightness(1.08)" : "saturate(1.5)";
+    ctx.shadowColor = boosted ? "rgba(90, 235, 255, 0.85)" : "rgba(255, 240, 180, 0.7)";
+    ctx.shadowBlur = boosted ? 18 : 10;
 
-    if (this.sprite && this.sprite.complete) {
-      ctx.drawImage(this.sprite, -baseSize / 2, -baseSize / 2, baseSize, baseSize);
+    if (boosted) {
+      const pulse = 0.5 + 0.5 * Math.sin(frameNow / 90);
+      const remainingRatio = this.getSpeedBoostRemainingRatio(frameNow);
+      const ringRadius = this.r * 1.28 + pulse * 2;
+      ctx.save();
+      if (boostRingSprite) {
+        const ringSize = ringRadius * 2.35;
+        ctx.globalAlpha = 0.8;
+        ctx.drawImage(boostRingSprite, -ringSize * 0.5, -ringSize * 0.5, ringSize, ringSize);
+        ctx.globalAlpha = 0.82;
+        ctx.strokeStyle = "rgba(255, 235, 85, 0.96)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(
+          0,
+          0,
+          ringRadius,
+          -Math.PI / 2,
+          -Math.PI / 2 + Math.PI * 2 * remainingRatio
+        );
+        ctx.stroke();
+      } else {
+        ctx.globalAlpha = 0.2;
+        ctx.strokeStyle = "rgba(255, 247, 180, 0.78)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.82;
+        ctx.strokeStyle = "rgba(255, 235, 85, 0.96)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(
+          0,
+          0,
+          ringRadius,
+          -Math.PI / 2,
+          -Math.PI / 2 + Math.PI * 2 * remainingRatio
+        );
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    const sprite = pipelineSprite || (this.sprite && this.sprite.complete ? this.sprite : null);
+    if (sprite) {
+      ctx.drawImage(sprite, -baseSize / 2, -baseSize / 2, baseSize, baseSize);
+    } else {
+      ctx.fillStyle = "#f4df7c";
+      ctx.beginPath();
+      ctx.arc(0, 0, this.r * 0.72, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#111111";
+      ctx.fillRect(-this.r * 0.38, -this.r * 0.2, this.r * 0.24, this.r * 0.18);
+      ctx.fillRect(this.r * 0.14, -this.r * 0.2, this.r * 0.24, this.r * 0.18);
+      ctx.strokeStyle = "#111111";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-this.r * 0.62, -this.r * 0.64, this.r * 1.24, this.r * 1.24);
     }
 
     ctx.restore();

@@ -7,6 +7,7 @@ export function fixCanvasDPI(canvas, ctx) {
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
+  ctx.imageSmoothingEnabled = false;
 }
 
 export function sizeCanvasToLayout(canvas, layoutEl, gameWrapEl) {
@@ -48,56 +49,55 @@ export function buildBackground(width, height) {
   bg.width = Math.max(1, Math.floor(width));
   bg.height = Math.max(1, Math.floor(height));
   const bctx = bg.getContext("2d");
+  bctx.imageSmoothingEnabled = false;
 
-  const base = bctx.createRadialGradient(
-    width * 0.5, height * 0.5, 0,
-    width * 0.5, height * 0.5, Math.max(width, height) * 0.75
-  );
-  base.addColorStop(0, "#2b2a3a");
-  base.addColorStop(1, "#14121f");
+  const base = bctx.createLinearGradient(0, 0, 0, height);
+  base.addColorStop(0, "#2a2923");
+  base.addColorStop(0.58, "#1f211d");
+  base.addColorStop(1, "#151712");
   bctx.fillStyle = base;
   bctx.fillRect(0, 0, width, height);
 
   bctx.save();
-  bctx.globalAlpha = 0.35;
-  const glowA = bctx.createRadialGradient(
-    width * 0.12, height * 0.85, 0,
-    width * 0.12, height * 0.85, width * 0.55
-  );
-  glowA.addColorStop(0, "rgba(70, 130, 200, 1)");
-  glowA.addColorStop(1, "rgba(70, 130, 200, 0)");
-  bctx.fillStyle = glowA;
-  bctx.fillRect(0, 0, width, height);
-
-  const glowB = bctx.createRadialGradient(
-    width * 0.88, height * 0.2, 0,
-    width * 0.88, height * 0.2, width * 0.5
-  );
-  glowB.addColorStop(0, "rgba(130, 90, 200, 1)");
-  glowB.addColorStop(1, "rgba(130, 90, 200, 0)");
-  bctx.fillStyle = glowB;
-  bctx.fillRect(0, 0, width, height);
-  bctx.restore();
-
-  bctx.save();
-  bctx.fillStyle = "rgba(220, 220, 255, 0.2)";
-  for (let i = 0; i < 260; i += 1) {
-    const x = Math.random() * width;
-    const y = Math.random() * height;
-    const r = Math.random() * 1.2 + 0.2;
+  bctx.globalAlpha = 0.36;
+  bctx.fillStyle = "#34302a";
+  for (let y = 0; y < height; y += 32) {
+    bctx.fillRect(0, y, width, 3);
+  }
+  bctx.globalAlpha = 0.28;
+  bctx.fillStyle = "#0d0f0c";
+  for (let x = -height; x < width; x += 52) {
     bctx.beginPath();
-    bctx.arc(x, y, r, 0, Math.PI * 2);
+    bctx.moveTo(x, height);
+    bctx.lineTo(x + height * 0.34, 0);
+    bctx.lineTo(x + height * 0.34 + 3, 0);
+    bctx.lineTo(x + 3, height);
+    bctx.closePath();
     bctx.fill();
   }
   bctx.restore();
 
   bctx.save();
+  bctx.globalAlpha = 0.42;
+  bctx.fillStyle = "#2b2b2b";
+  const roadWidth = Math.max(70, width * 0.16);
+  bctx.fillRect(width * 0.5 - roadWidth * 0.5, 0, roadWidth, height);
+  bctx.fillStyle = "#d9c864";
+  for (let y = -18; y < height; y += 54) {
+    bctx.fillRect(width * 0.5 - 3, y, 6, 22);
+  }
+  bctx.fillStyle = "rgba(255, 255, 255, 0.14)";
+  bctx.fillRect(width * 0.5 - roadWidth * 0.5 + 6, 0, 3, height);
+  bctx.fillRect(width * 0.5 + roadWidth * 0.5 - 9, 0, 3, height);
+  bctx.restore();
+
+  bctx.save();
   const vignette = bctx.createRadialGradient(
-    width * 0.5, height * 0.5, Math.min(width, height) * 0.2,
-    width * 0.5, height * 0.5, Math.max(width, height) * 0.65
+    width * 0.5, height * 0.5, Math.min(width, height) * 0.24,
+    width * 0.5, height * 0.5, Math.max(width, height) * 0.72
   );
   vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
-  vignette.addColorStop(1, "rgba(0, 0, 0, 0.5)");
+  vignette.addColorStop(1, "rgba(0, 0, 0, 0.42)");
   bctx.fillStyle = vignette;
   bctx.fillRect(0, 0, width, height);
   bctx.restore();

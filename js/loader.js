@@ -91,6 +91,7 @@ const JS_MODULES = [
   "./core/Engine.js",
   "./core/Input.js",
   "./core/state.js",
+  "./core/assets.js",
   "./core/LevelManager.js",
   "./core/physics.js",
   "./core/utils.js",

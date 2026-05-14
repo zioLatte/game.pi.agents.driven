@@ -53,6 +53,12 @@ export class Onion {
     this.reactionCooldown = 0;
     this.dodgeEnabled = false;
     this.surgeOffset = Math.random() * Math.PI * 2;
+    this.frameNow = 0;
+    this.speedBoostMultiplier = 1;
+    this.speedBoostUntil = 0;
+    this.speedBoostStartedAt = 0;
+    this.speedBoostDurationMs = 0;
+    this.speedDotTarget = null;
 
     const dirs = ["up", "down", "left", "right"];
     this.currentDirection = dirs[Math.floor(Math.random() * dirs.length)];
@@ -84,26 +90,27 @@ export class Onion {
     return ref;
   }
 
-  #setVelocityFromDirection() {
+  #setVelocityFromDirection(now = this.frameNow) {
     const inChase = this.state === ONION_STATE.CHASE_PICHAN;
+    const movementSpeed = this.#getMovementSpeed(now);
     switch (this.currentDirection) {
       case "up":
-        this.vx = 0; this.vy = -this.speed;
+        this.vx = 0; this.vy = -movementSpeed;
         if (inChase && this.spriteUpChase.loaded) this.sprite = this.spriteUpChase.img;
         else if (this.spriteUp.loaded) this.sprite = this.spriteUp.img;
         break;
       case "down":
-        this.vx = 0; this.vy = this.speed;
+        this.vx = 0; this.vy = movementSpeed;
         if (inChase && this.spriteDownChase.loaded) this.sprite = this.spriteDownChase.img;
         else if (this.spriteDown.loaded) this.sprite = this.spriteDown.img;
         break;
       case "left":
-        this.vx = -this.speed; this.vy = 0;
+        this.vx = -movementSpeed; this.vy = 0;
         if (inChase && this.spriteLeftChase.loaded) this.sprite = this.spriteLeftChase.img;
         else if (this.spriteLeft.loaded) this.sprite = this.spriteLeft.img;
         break;
       case "right":
-        this.vx = this.speed; this.vy = 0;
+        this.vx = movementSpeed; this.vy = 0;
         if (inChase && this.spriteRightChase.loaded) this.sprite = this.spriteRightChase.img;
         else if (this.spriteRight.loaded) this.sprite = this.spriteRight.img;
         break;
@@ -163,6 +170,7 @@ export class Onion {
 
   startDeathFade() {
     if (this.dying) return;
+    this.clearSpeedDotTarget();
     this.dying = true;
     this.fadeTimer = 0;
     this.vx = 0;
@@ -185,11 +193,13 @@ export class Onion {
   update(dt, now) {
     if (!this.alive) return;
     const frameNow = now ?? performance.now();
+    this.frameNow = frameNow;
     this.spawnTimer += dt;
     this.wigglePhase += dt * (this.state === ONION_STATE.CHASE_PICHAN ? 10 : 4.5);
     this.reactionCooldown = Math.max(0, this.reactionCooldown - dt);
 
     if (this.dying) {
+      this.clearSpeedDotTarget();
       this.x += this.knockbackX * dt;
       this.y += this.knockbackY * dt;
       this.knockbackX *= 0.85;
@@ -208,18 +218,23 @@ export class Onion {
     }
 
     updateOnionAI(this, frameNow, window.isShooting || false, window.lastPlayerShot || 0);
+    if (this.speedDotTarget && !this.canTargetSpeedDot(frameNow)) {
+      this.clearSpeedDotTarget();
+    }
 
     this.#maybeDodgeBullets(dt);
 
     if (this.state !== ONION_STATE.CHASE_PICHAN) {
-      this.#setVelocityFromDirection();
+      this.#setVelocityFromDirection(frameNow);
     }
 
     if (this.state === ONION_STATE.RANDOM_MOVE || this.state === ONION_STATE.COOLDOWN) {
       const spawnPunch = Math.max(0, 1 - this.spawnTimer * 3.5) * 0.14;
       const idlePulse = Math.sin(this.wigglePhase) * 0.025;
       this.targetScale = 1 + spawnPunch + idlePulse;
-      this.#randomMove(dt);
+      if (!this.#moveToSpeedDot(dt, frameNow)) {
+        this.#randomMove(dt);
+      }
     } else if (this.state === ONION_STATE.CHASE_PICHAN) {
       const elapsed = (frameNow - (this.chaseStartTime || 0)) / 1000;
       const growDuration = 0.32;
@@ -238,7 +253,9 @@ export class Onion {
       const playerSpeed = this.player?.speed ?? this.baseSpeed;
       const surge = 1 + Math.sin(frameNow / 120 + this.surgeOffset) * 0.09;
       this.speed = playerSpeed * (this.chaseSpeedScale || 1) * surge;
-      this.#chase(dt, frameNow);
+      if (!this.#moveToSpeedDot(dt, frameNow)) {
+        this.#chase(dt, frameNow);
+      }
     }
 
     this.color = getOnionColor(this, frameNow);
@@ -248,6 +265,70 @@ export class Onion {
 
     const scaleLerp = Math.min(1, dt * 8);
     this.drawScale += (this.targetScale - this.drawScale) * scaleLerp;
+  }
+
+  applySpeedBoost(multiplier, durationMs, now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    if (this.isSpeedBoosted(frameNow)) return false;
+
+    const boostMultiplier = Number(multiplier);
+    const boostDuration = Number(durationMs);
+    if (!Number.isFinite(boostMultiplier) || boostMultiplier <= 1) return false;
+    if (!Number.isFinite(boostDuration) || boostDuration <= 0) return false;
+
+    this.speedBoostMultiplier = boostMultiplier;
+    this.speedBoostStartedAt = frameNow;
+    this.speedBoostDurationMs = boostDuration;
+    this.speedBoostUntil = frameNow + boostDuration;
+    return true;
+  }
+
+  isSpeedBoosted(now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    return frameNow < this.speedBoostUntil;
+  }
+
+  getSpeedBoostRemainingRatio(now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    if (!this.isSpeedBoosted(frameNow) || this.speedBoostDurationMs <= 0) return 0;
+    const remaining = this.speedBoostUntil - frameNow;
+    return Math.max(0, Math.min(1, remaining / this.speedBoostDurationMs));
+  }
+
+  canTargetSpeedDot(now = performance.now(), dot = this.speedDotTarget) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    if (!this.alive || this.dying || this.isSpeedBoosted(frameNow)) return false;
+    if (this.state !== ONION_STATE.CHASE_PICHAN) return true;
+    if (!dot || !this.player) return false;
+
+    const dotDistance = Math.hypot(dot.x - this.x, dot.y - this.y);
+    const playerDistance = Math.hypot(this.player.x - this.x, this.player.y - this.y);
+    const usefulDistance = Math.max(0, Number(dot.chaseOpportunityDistance) || 0);
+    const immediatePlayerDistance = Math.max(0, Number(dot.chaseImmediatePlayerDistance) || 0);
+    const advantageRatio = Math.max(0, Number(dot.chaseDotAdvantageRatio) || 0.75);
+
+    return dotDistance <= usefulDistance
+      && playerDistance > immediatePlayerDistance
+      && dotDistance < playerDistance * advantageRatio;
+  }
+
+  setSpeedDotTarget(dot) {
+    if (!dot || !this.canTargetSpeedDot(this.frameNow, dot)) {
+      this.clearSpeedDotTarget();
+      return;
+    }
+    this.speedDotTarget = {
+      x: dot.x,
+      y: dot.y,
+      r: dot.r,
+      chaseOpportunityDistance: dot.chaseOpportunityDistance,
+      chaseImmediatePlayerDistance: dot.chaseImmediatePlayerDistance,
+      chaseDotAdvantageRatio: dot.chaseDotAdvantageRatio
+    };
+  }
+
+  clearSpeedDotTarget() {
+    this.speedDotTarget = null;
   }
 
   #randomMove(dt) {
@@ -285,6 +366,43 @@ export class Onion {
       this.currentDirection = dirs[Math.floor(Math.random() * dirs.length)];
       this.#setVelocityFromDirection();
     }
+  }
+
+  #getMovementSpeed(now = this.frameNow) {
+    return this.speed * (this.isSpeedBoosted(now) ? this.speedBoostMultiplier : 1);
+  }
+
+  #moveToSpeedDot(dt, now) {
+    const target = this.speedDotTarget;
+    if (!target || !this.canTargetSpeedDot(now, target)) return false;
+
+    const dx = target.x - this.x;
+    const dy = target.y - this.y;
+    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+      this.vx = 0;
+      this.vy = 0;
+      return true;
+    }
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      this.currentDirection = dx > 0 ? "right" : "left";
+    } else {
+      this.currentDirection = dy > 0 ? "down" : "up";
+    }
+
+    this.changeDirTimer = Math.max(this.changeDirTimer, 0.2);
+    this.#setVelocityFromDirection(now);
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    if (this.arena) {
+      this.#applyArenaConstraint(false);
+    } else {
+      this.x = Math.max(this.r, Math.min(this.worldWidth - this.r, this.x));
+      this.y = Math.max(this.r, Math.min(this.worldHeight - this.r, this.y));
+    }
+
+    return true;
   }
 
   #chase(dt, now) {
@@ -341,12 +459,18 @@ export class Onion {
     if (!ctx) return;
 
     const frameNow = now ?? performance.now();
+    const renderAssets = typeof window !== "undefined" ? window.PICHAN_RENDER_ASSETS : null;
+    const pipelineSprite = renderAssets?.getImage?.("sprites.onionIdle") || null;
+    const boostRingSprite = renderAssets?.getImage?.("sprites.boostRing") || null;
     ctx.save();
     const inChase = this.state === ONION_STATE.CHASE_PICHAN;
+    const boosted = this.isSpeedBoosted(frameNow);
     const chaseBoost = this.chaseSpeedScale ?? 1;
     let saturation = 1;
     if (inChase && chaseBoost > 1) {
       saturation = 1.8;
+    } else if (boosted) {
+      saturation = 1.45;
     }
     ctx.filter = `saturate(${saturation})`;
     let alpha = this.fade;
@@ -360,11 +484,59 @@ export class Onion {
     ctx.rotate(this.visualAngle + Math.sin(this.wigglePhase * 0.65) * 0.03);
 
     const glowAlpha = inChase ? 0.65 : 0.24;
-    ctx.shadowColor = inChase ? 'rgba(255, 95, 95, 0.65)' : 'rgba(255, 170, 90, 0.28)';
-    ctx.shadowBlur = inChase ? 10 : 5;
+    ctx.shadowColor = boosted ? "rgba(95, 235, 255, 0.72)" : (inChase ? 'rgba(255, 95, 95, 0.65)' : 'rgba(255, 170, 90, 0.28)');
+    ctx.shadowBlur = boosted ? 14 : (inChase ? 10 : 5);
 
-    if (this.sprite && this.sprite.complete) {
-      ctx.drawImage(this.sprite, -size / 2, -size / 2, size, size);
+    const sprite = pipelineSprite || (this.sprite && this.sprite.complete ? this.sprite : null);
+    if (sprite) {
+      ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+    } else {
+      ctx.fillStyle = inChase ? "#bf2d35" : "#a84d31";
+      ctx.beginPath();
+      ctx.arc(0, 2, size * 0.34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = inChase ? "#ff8075" : "#d9834c";
+      ctx.beginPath();
+      ctx.arc(-size * 0.08, -size * 0.05, size * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#6eac54";
+      ctx.fillRect(-2, -size * 0.47, 4, size * 0.2);
+      ctx.strokeStyle = "#2b1a12";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 2, size * 0.34, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (boosted) {
+      const pulse = 0.5 + 0.5 * Math.sin(frameNow / 90 + this.surgeOffset);
+      const remainingRatio = this.getSpeedBoostRemainingRatio(frameNow);
+      const ringRadius = this.r * 1.18 + pulse * 2;
+      if (boostRingSprite) {
+        const ringSize = ringRadius * 2.35;
+        ctx.globalAlpha = alpha * 0.74;
+        ctx.drawImage(boostRingSprite, -ringSize * 0.5, -ringSize * 0.5, ringSize, ringSize);
+      } else {
+        ctx.globalAlpha = alpha * 0.18;
+        ctx.strokeStyle = "rgba(255, 247, 180, 0.75)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.globalAlpha = alpha * 0.78;
+      ctx.strokeStyle = "rgba(255, 235, 85, 0.95)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(
+        0,
+        0,
+        ringRadius,
+        -Math.PI / 2,
+        -Math.PI / 2 + Math.PI * 2 * remainingRatio
+      );
+      ctx.stroke();
     }
 
     ctx.globalAlpha = alpha * glowAlpha * 0.65;

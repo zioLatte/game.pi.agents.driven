@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-006",
+  "thread_name": "chase-dot-opportunism",
+  "thread_basename": "DESIGN_REQUESTED-task-orchestrator-2-game-designer-006-chase-dot-opportunism",
+  "title": "Lightning speed boost with chase-onion opportunism",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "powerup-movement-ai",
+  "task_level": "L2",
+  "patch_budget": "small",
+  "status": "BUILD_DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "review-maintainability-guard",
+  "current_owner_since": "2026-05-12 09:01 CEST",
+  "current_status_since": "2026-05-12 09:01 CEST",
+  "last_handoff_at": "2026-05-12 09:01 CEST",
+  "opened_at": "2026-05-12 08:48 CEST",
+  "last_updated_at": "2026-05-12 09:01 CEST",
+  "resolved_at": null,
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/DESIGN_REQUESTED-task-orchestrator-2-game-designer-006-chase-dot-opportunism.md",
+  "state_file": ".agents/threads/DESIGN_REQUESTED-task-orchestrator-2-game-designer-006-chase-dot-opportunism.state.json",
+  "log_file": ".agents/threads/DESIGN_REQUESTED-task-orchestrator-2-game-designer-006-chase-dot-opportunism.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-002",
+  "total_execution_minutes": 13,
+  "problem_statement": "Current Speed Dot v1 needed to become a visual lightning accelerator, with identical temporary boost duration for Pi-chan and onions, proportional boost timer rings, and simple opportunistic chase-onion targeting when the lightning is clearly nearby and convenient.",
+  "game_flow_context": "lightning accelerator / contested speed boost / onion chase opportunism / movement priority / readability / fixed-arena waves",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    ".agents/threads/004-speed-dot-contested-powerup/state.json",
+    ".agents/threads/004-speed-dot-contested-powerup/log.jsonl",
+    ".agents/threads/004-speed-dot-contested-powerup/thread.md",
+    "main.js",
+    "js/core/LevelManager.js",
+    "js/entities/Onion.js",
+    "js/entities/Player.js",
+    "js/ai/OnionAI.js"
+  ],
+  "validated_decisions": [
+    "Speed Dot v1 exists and is closed DONE in thread 004.",
+    "Thread 004 explicitly decided: onions in CHASE_PICHAN must not abandon Pi-chan for the dot.",
+    "The new human request intentionally reopens that narrow decision.",
+    "Current code reflects the old decision: Onion.canTargetSpeedDot() rejects CHASE_PICHAN, Onion.update() clears dot target during chase, and LevelManager target assignment skips onions that cannot target the dot.",
+    "Current main.js Speed Dot pickup checks Pi-chan and the single assigned dot.targetOnion, not every onion near the dot.",
+    "The human request evolved the task from design-only chase dot opportunism into a build request for a lightning accelerator and timer-ring feedback.",
+    "The applied implementation keeps internal Speed Dot API names for backward compatibility while changing the rendered pickup to a lightning bolt."
+  ],
+  "draft_assumptions_in_play": [
+    "The desired behavior should be opportunistic, not a full chase redesign: chase remains primary, but a nearby dot can become a short detour or pickup opportunity.",
+    "Si avvicina needs a small, testable proximity rule to avoid chase onions abandoning Pi-chan from far away.",
+    "The likely design question is threshold/priority: when a chased onion may divert, whether only one onion may target the dot, and whether unassigned chase onions may collect by contact.",
+    "The smallest safe follow-up probably changes Speed Dot eligibility/collision logic, not OnionAI chase timers or wave tuning.",
+    "Existing dot naming can remain internally for a reversible patch; visual language and gameplay copy can move to lightning without broad renames."
+  ],
+  "current_direction": [
+    "Build applied after expanded human request supplied concrete implementation constraints.",
+    "Preserve wave-based progression, spawn cap/cadence, scoring, bullets, and arena behavior.",
+    "Preserve Speed Dot singleton/no-stack/atomic consume constraints.",
+    "Keep the change small and reversible.",
+    "Route to review-maintainability-guard before closing DONE."
+  ],
+  "explicit_non_goals": [
+    "No wave tuning or config/levels.json changes.",
+    "No Speed Dot redesign beyond lightning visual replacement and timer-ring feedback.",
+    "No multiple dots, boost stacking, new enemy, HP, big onion, scoring redesign, HUD, assets, sounds, shop, upgrades, or recap.",
+    "No changes to bullets, player shooting, arena rotation, network/presence, audio, online services, or level progression.",
+    "No broad refactor or generic power-up framework."
+  ],
+  "approved_impact_surface": [
+    "main.js",
+    "js/core/LevelManager.js",
+    "js/entities/Onion.js",
+    "js/entities/Player.js"
+  ],
+  "candidate_impact_surface": [
+    "js/core/LevelManager.js",
+    "js/entities/Onion.js",
+    "main.js"
+  ],
+  "optional_impact_surface": [
+    "js/entities/Player.js only if boost contract compatibility is affected",
+    "js/ai/OnionAI.js only if design proves chase-state ownership must change"
+  ],
+  "forbidden_files": [
+    "config/levels.json by default",
+    "js/entities/Bullet.js",
+    "js/core/Arena.js",
+    "js/core/Engine.js",
+    "js/core/physics.js",
+    "assets/",
+    "sounds/",
+    "css/",
+    "index.html",
+    "js/net/",
+    "js/services/",
+    "unrelated dirty worktree changes"
+  ],
+  "freeze_zones": [
+    "wave tuning and progression",
+    "scoring",
+    "bullet behavior",
+    "arena rotation/runtime arena motion",
+    "network/presence/audio/UI assets",
+    "Speed Dot singleton/no-stack/atomic consume constraints except the chased-onion proximity and lightning visual/timer feedback rule"
+  ],
+  "backward_compatibility_concerns": [
+    "Thread 004 manual checklist expected chase onions to ignore dot; this task replaces that expectation narrowly.",
+    "Allowing chase onions to pursue dot from too far away can reduce chase readability and player attribution.",
+    "Current pickup only considers dot.targetOnion; changing chase pickup may require either target assignment changes or collision candidate expansion.",
+    "OnionAI.js owns chase timers and speed recalculation; default plan should avoid touching it.",
+    "Existing dirty worktree includes Player.js/Onion.js changes from prior tasks and must not be reverted.",
+    "Internal method and field names still say Speed Dot for call-site compatibility; a future rename would need a separate thread."
+  ],
+  "required_validations": [
+    "node --input-type=module --check < changed-js-file> for every changed JS file",
+    "JSON parse only if a JSON file is changed",
+    "manual browser smoke test focused on chase onion near-dot behavior",
+    "PHPMD not applicable unless PHP files/config are actually introduced or discovered"
+  ],
+  "human_test_checklist": [
+    "Put a lightning pickup near a chased onion path and confirm the onion tries to take it when close.",
+    "Confirm chase remains readable and the onion does not abandon Pi-chan from far away.",
+    "Confirm a chased onion can consume the lightning and receive the existing boost.",
+    "Confirm Pi-chan can still consume the lightning.",
+    "Confirm no double pickup in one lightning lifecycle.",
+    "Confirm non-chase onion targeting still works.",
+    "Confirm Speed Dot no-stack and already-boosted behavior remains understood.",
+    "Confirm spawn/cap/cadence, wave completion, bullets, collisions, game over, reset/continue/goto still work."
+  ],
+  "open_questions": [
+    "Pending human browser playtest: tune whether the initial opportunism thresholds feel too eager or too conservative.",
+    "Pending review: decide whether internal Speed Dot naming is acceptable for this reversible patch or should be renamed in a later cleanup thread."
+  ],
+  "artifacts": [
+    ".agents/threads/DESIGN_REQUESTED-task-orchestrator-2-game-designer-006-chase-dot-opportunism.md",
+    ".agents/threads/DESIGN_REQUESTED-task-orchestrator-2-game-designer-006-chase-dot-opportunism.state.json",
+    ".agents/threads/DESIGN_REQUESTED-task-orchestrator-2-game-designer-006-chase-dot-opportunism.log.jsonl"
+  ],
+  "solution_applied": [
+    "Rendered the existing Speed Dot pickup as a minimal MSX-style lightning bolt in main.js without adding assets.",
+    "Kept pickup lifecycle atomic through the existing consumeSpeedDot path.",
+    "Added configurable chase-opportunism thresholds to LevelManager defaults and assignment logic.",
+    "Allowed chase onions to target the lightning only when unboosted, the lightning is within useful distance, Pi-chan is not immediate prey, and the lightning is clearly closer than direct chase.",
+    "Added proportional speed-boost timer rings for Pi-chan and onions, with independent remaining-time state per entity.",
+    "Kept boost duration shared through existing speed boost configuration and avoided stacking behavior changes."
+  ],
+  "decision_log_summary": [
+    "2026-05-12: task-orchestrator opened PI-006 as a follow-up to Speed Dot v1 and routed to game-designer because the request changes the prior chase-priority rule.",
+    "2026-05-12: human expanded the task into a direct build request for lightning accelerator visuals, timer rings, and chase-onion opportunism; implementation completed and routed to review-maintainability-guard."
+  ]
+}

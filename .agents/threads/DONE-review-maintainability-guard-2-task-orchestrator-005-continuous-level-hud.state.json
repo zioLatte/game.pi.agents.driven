@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-005",
+  "thread_name": "continuous-level-hud",
+  "thread_basename": "DONE-review-maintainability-guard-2-task-orchestrator-005-continuous-level-hud",
+  "title": "continuous wave transition and readable side HUD",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "mixed",
+  "task_level": "L2",
+  "patch_budget": "small",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "none",
+  "current_owner_since": "2026-05-12 07:39 CEST",
+  "current_status_since": "2026-05-12 07:39 CEST",
+  "last_handoff_at": "2026-05-12 07:39 CEST",
+  "opened_at": "2026-05-11 19:45 CEST",
+  "last_updated_at": "2026-05-12 07:39 CEST",
+  "resolved_at": "2026-05-12 07:39 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-005-continuous-level-hud.md",
+  "state_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-005-continuous-level-hud.state.json",
+  "log_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-005-continuous-level-hud.log.jsonl",
+  "legacy_files": [
+    ".agents/threads/DESIGN_DONE-task-orchestrator-2-gameplay-programmer-005-continuous-level-hud.md",
+    ".agents/threads/DESIGN_DONE-task-orchestrator-2-gameplay-programmer-005-continuous-level-hud.state.json",
+    ".agents/threads/DESIGN_DONE-task-orchestrator-2-gameplay-programmer-005-continuous-level-hud.log.jsonl",
+    ".agents/threads/IMPACT_ANALYSIS_REQUESTED-gameplay-programmer-2-impact-regression-guard-005-continuous-level-hud.md",
+    ".agents/threads/IMPACT_ANALYSIS_REQUESTED-gameplay-programmer-2-impact-regression-guard-005-continuous-level-hud.state.json",
+    ".agents/threads/IMPACT_ANALYSIS_REQUESTED-gameplay-programmer-2-impact-regression-guard-005-continuous-level-hud.log.jsonl",
+    ".agents/threads/APPROVED_FOR_BUILD-impact-regression-guard-2-build-agent-005-continuous-level-hud.md",
+    ".agents/threads/APPROVED_FOR_BUILD-impact-regression-guard-2-build-agent-005-continuous-level-hud.state.json",
+    ".agents/threads/APPROVED_FOR_BUILD-impact-regression-guard-2-build-agent-005-continuous-level-hud.log.jsonl",
+    ".agents/threads/IN_REVIEW-build-agent-2-review-maintainability-guard-005-continuous-level-hud.md",
+    ".agents/threads/IN_REVIEW-build-agent-2-review-maintainability-guard-005-continuous-level-hud.state.json",
+    ".agents/threads/IN_REVIEW-build-agent-2-review-maintainability-guard-005-continuous-level-hud.log.jsonl"
+  ],
+  "latest_log_id": "LOG-009",
+  "total_execution_minutes": 28,
+  "problem_statement": "Wave completion currently triggers a blocking level overlay and engine stop; the player needs continuous level transitions plus readable level/score/wave progress feedback without changing wave-based progression.",
+  "game_flow_context": "waves / level up feedback / HUD / score readability / onion pressure",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    ".agents/templates/thread_template.md",
+    ".agents/templates/thread_state_template.json",
+    ".agents/templates/thread_log_template.jsonl",
+    "main.js",
+    "js/core/LevelManager.js",
+    "index.html",
+    "css/game.css"
+  ],
+  "validated_decisions": [
+    "Speed Dot is already implemented and must not be redesigned in this iteration.",
+    "Progression remains wave-based, not score-based.",
+    "Wave completion remains based on finite budget exhausted plus zero pressure onions.",
+    "Level transition must become continuous and non-blocking.",
+    "A minimal side panel or HUD is explicitly in scope for this task despite the older contract listing HUD wave meter as out of scope by default."
+  ],
+  "draft_assumptions_in_play": [
+    "DOM side panel is likely acceptable because index.html already has side panels and overlays.",
+    "Canvas HUD can be used if it is smaller and less invasive, but current canvas HUD appears minimal and not clearly sufficient for side-panel readability.",
+    "Existing level overlay may remain for other flows if still used, but must not be used as the wave-completion transition.",
+    "Existing dirty worktree changes are external input and must not be reverted.",
+    "resetGame(nextLevel, false) is accepted as the v1 transition primitive if impact review confirms the player/bullet reset tradeoff is acceptable.",
+    "DOM HUD is the preferred implementation path unless impact review finds a concrete layout blocker.",
+    "Impact-regression-guard LOG-004 approves routing to build with strict file/scope constraints.",
+    "Build-agent LOG-006 proposes BUILD_DONE; task-orchestrator routes to review-maintainability-guard.",
+    "Review-maintainability-guard LOG-008 verdict is APPROVE_WITH_NOTES with status proposal DONE."
+  ],
+  "current_direction": [
+    "Add LevelManager.getWaveProgress() as a read-only API with derived current level, spawned budget, total budget, active pressure count, cleared/remaining/queued onions, progress ratio and completion.",
+    "Implement HUD ownership in main.js with DOM targets from index.html; keep HUD read-only and out of progression/scoring decisions.",
+    "Replace only the wave-completion calls that block gameplay: fadeBgm(0, 800), engine.stop() and showLevelOverlay(nextLevel).",
+    "Keep showLevelOverlay() infrastructure for now; no wave-completion path may call it.",
+    "Use non-blocking toast/status feedback that does not affect isOverlayActive() and does not capture input.",
+    "Keep Speed Dot behavior and current rendering layer; current two drawSpeedDot() call sites are mutually exclusive branches unless impact review proves otherwise.",
+    "Build is approved with guard constraints from LOG-004.",
+    "Build must add explicit maxLevel/localStorage update for continuous transitions.",
+    "Build must keep level-up toast non-blocking, outside isOverlayActive(), and unable to capture input.",
+    "Build must keep HUD read-only; HUD must not drive progression, score or wave completion.",
+    "Review completed with APPROVE_WITH_NOTES.",
+    "Thread closed DONE by task-orchestrator."
+  ],
+  "review_verdict": {
+    "log_id": "LOG-008",
+    "verdict": "APPROVE_WITH_NOTES",
+    "status_proposal": "DONE",
+    "required_rework": [],
+    "notes": [
+      "Pending human browser tests remain recommended before treating audio/input/game-feel as human-verified.",
+      "Dirty worktree outside scope remains unnormalized by this task."
+    ]
+  },
+  "pending_human_browser_tests": [
+    "Live wave completion.",
+    "Held input during level-up toast.",
+    "Level-up SFX fade/stop.",
+    "Speed Dot behavior.",
+    "Goto, pause, gameover and continue flows."
+  ],
+  "build_report_summary": [
+    "LOG-006 reports changes in js/core/LevelManager.js, main.js, index.html, css/game.css and thread log only.",
+    "LOG-006 reports js/ui/canvas.js was inspected but not modified.",
+    "LOG-006 reports LevelManager.getWaveProgress(), continuous non-blocking wave transition, explicit maxLevel/localStorage sync, non-blocking level toast/audio fade lifecycle, and read-only DOM HUD.",
+    "LOG-006 reports drawHUD() removal after rg confirmation.",
+    "LOG-006 reports forbidden files were not edited by this build, while pre-existing dirty Player/Onion changes remain outside scope."
+  ],
+  "build_diff_scope_observed": [
+    "css/game.css",
+    "index.html",
+    "js/core/LevelManager.js",
+    "main.js",
+    ".agents/threads/IN_REVIEW-build-agent-2-review-maintainability-guard-005-continuous-level-hud.log.jsonl"
+  ],
+  "dirty_worktree_outside_scope_observed": [
+    ".codex/skills/*.md deletions",
+    "js/entities/Onion.js",
+    "js/entities/Player.js",
+    ".agents/skills/",
+    ".agents/threads/003-audio-not-playing/",
+    ".agents/threads/004-speed-dot-contested-powerup/"
+  ],
+  "approved_runtime_changes": [
+    "Expose a read-only LevelManager.getWaveProgress() API derived from existing waveState and getPressureOnionCount().",
+    "On wave completion, keep the engine running and remove only the blocking wave-completion effects: fadeBgm(0, 800), engine.stop(), and showLevelOverlay(nextLevel).",
+    "Advance with resetGame(nextLevel, false) as v1 transition primitive, preserving score/game time/counters while accepting that player, bullets, onions, arena and Speed Dot are rebuilt.",
+    "Play level-up SFX and stop/fade it through a new non-blocking toast lifecycle, not through hideLevelOverlay().",
+    "Add explicit stats.maxLevel and localStorage pi_max_level update after continuous transition.",
+    "Add DOM HUD updates in main.js that read LevelManager/state and display LV, OPINION, NEXT WAVE progress and ONIONS, without driving progression.",
+    "Keep showLevelOverlay()/hideLevelOverlay() infrastructure, but no wave-completion path may call showLevelOverlay().",
+    "Keep Speed Dot update, pickup, targeting, config and draw layering behavior unchanged."
+  ],
+  "data_tuning_changes": [
+    "No config/levels.json changes.",
+    "No onion pressure tuning changes.",
+    "No maxAliveOnions, totalOnions, spawnIntervalMs, bullet bounce or Speed Dot config changes.",
+    "No asset, sound or copy-heavy content production."
+  ],
+  "build_constraints": [
+    "Edit only approved impact surface files.",
+    "Use js/ui/canvas.js only if implementation/manual layout check proves a responsive sizing issue; if touched, limit edits to sizing math.",
+    "Do not edit forbidden files or normalize unrelated dirty worktree changes.",
+    "If implementation requires Player/Bullet/Onion/OnionAI, config, assets/sounds or network/presence files, stop and return BLOCKED to task-orchestrator.",
+    "Before deleting drawHUD(), re-run rg and confirm no call site.",
+    "Do not add the toast to isOverlayActive() and ensure it cannot capture pointer/keyboard input."
+  ],
+  "explicit_non_goals": [
+    "No score-based progression.",
+    "No shop, upgrades, interstitials, recap screens or new mechanics.",
+    "No level config tuning in config/levels.json unless a blocking bug is found and justified.",
+    "No Speed Dot redesign.",
+    "No broad refactor.",
+    "No runtime arena rotation work.",
+    "No network/presence changes.",
+    "No physical continuity rewrite that preserves player position/bullets across waves.",
+    "No edits to js/ui/canvas.js unless the sizing issue is proven during build."
+  ],
+  "approved_impact_surface": [
+    "js/core/LevelManager.js",
+    "main.js",
+    "index.html",
+    "css/game.css",
+    "js/ui/canvas.js only if implementation/manual layout check proves the side panel cannot fit without a narrow responsive sizing fix"
+  ],
+  "forbidden_files": [
+    "config/levels.json unless a blocking data defect is proven and routed back through task-orchestrator",
+    "js/entities/Player.js",
+    "js/entities/Bullet.js",
+    "js/entities/Onion.js",
+    "js/ai/OnionAI.js",
+    "assets/",
+    "sounds/",
+    "online/network/presence files",
+    "js/net/",
+    "js/services/ network/presence files",
+    "unrelated dirty worktree changes",
+    ".agents/threads/*.state.json and .agents/threads/*.md for non-orchestrator roles"
+  ],
+  "freeze_zones": [
+    "Speed Dot behavior except confirmed duplicate draw/integration fix.",
+    "Wave tuning values.",
+    "Player/Bullet/Onion behavior.",
+    "Network/presence."
+  ],
+  "backward_compatibility_concerns": [
+    "resetGame(level, false) currently rebuilds player, onions and arena; gameplay-programmer must decide whether continuous transition can use it without breaking player continuity expectations.",
+    "showLevelOverlay currently restarts engine after timeout and is referenced by overlay/pause logic; removing or bypassing it must not break goto/gameover/loading flows.",
+    "isOverlayActive treats level overlay as blocking; new level-up feedback must not be represented as a blocking overlay.",
+    "drawSpeedDot appears in both clipped-arena and fallback drawing branches; gameplay-programmer must confirm whether this is duplicate same-frame draw or mutually exclusive branches.",
+    "gameplay-programmer LOG-002 reports the drawSpeedDot branches are mutually exclusive in one draw call; impact-regression-guard must verify this before approving build.",
+    "resetGame(nextLevel, false) preserves score/time but rebuilds player, onions, arena and Speed Dot; this v1 tradeoff must be reviewed explicitly.",
+    "Removing the overlay path means level-up SFX must be stopped/faded by new non-blocking feedback lifecycle.",
+    "Continuous transitions need explicit maxLevel/localStorage update because startEngineIfReady() may return while engine is already running.",
+    "Permanent side HUD can overflow current flex layout; impact review must decide whether css alone is sufficient or js/ui/canvas.js sizing is allowed.",
+    "Worktree already has unrelated modifications in gameplay files; next owner must not revert them."
+  ],
+  "required_validations": [
+    "node --input-type=module --check < changed-js-file> for every changed JS file",
+    "JSON parse only if a JSON file is changed",
+    "manual browser smoke test of continuous wave completion",
+    "PHPMD not applicable unless PHP files/config are actually introduced or discovered"
+  ],
+  "human_test_checklist": [
+    "Complete a wave and confirm the next wave starts without engine stop.",
+    "Confirm no blocking level overlay appears on wave completion.",
+    "Confirm movement/input remains active through level-up feedback.",
+    "Confirm level-up SFX plays.",
+    "Confirm HUD/panel shows LV, OPINION, NEXT WAVE progress and ONIONS remaining or completed/total.",
+    "Confirm progression still advances only on wave completion.",
+    "Confirm Speed Dot still spawns, renders once at the intended layer, can be collected, and keeps previous behavior.",
+    "Smoke-check onion spawn/cap/cadence, chase, collisions, bullets and game over.",
+    "Confirm goto overlay, pause/resume, play again and continue still work.",
+    "Confirm desktop and <=900px layouts do not overlap HUD, canvas or touch controls.",
+    "Confirm stats.maxLevel and localStorage.pi_max_level update immediately after continuous transition.",
+    "Confirm level-up SFX stops/fades without relying on #level-overlay.visible."
+  ],
+  "open_questions": [],
+  "artifacts": [
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-005-continuous-level-hud.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-005-continuous-level-hud.state.json",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-005-continuous-level-hud.log.jsonl"
+  ],
+  "solution_applied": [
+    "LevelManager.getWaveProgress() added as a read-only derived wave progress API.",
+    "Wave completion now advances continuously via resetGame(nextLevel, false) without engine.stop(), showLevelOverlay(nextLevel), or fadeBgm(0, 800) in the wave-complete branch.",
+    "Explicit maxLevel/localStorage sync added for continuous transitions.",
+    "Non-blocking level toast added outside isOverlayActive() with independent level-up SFX fade lifecycle.",
+    "Read-only DOM HUD added for LV, OPINION, NEXT WAVE progress and ONIONS.",
+    "js/ui/canvas.js was not modified.",
+    "Review-maintainability-guard approved with notes in LOG-008; no rework required."
+  ],
+  "decision_log_summary": [
+    "2026-05-11: task-orchestrator opened PI-005 and routed directly to gameplay-programmer because design direction is supplied and implementation impact/risk needs specification before build.",
+    "2026-05-11: gameplay-programmer LOG-002 incorporated; task-orchestrator routed to impact-regression-guard before build because main.js/LevelManager/HUD/overlay call sites carry regression risk.",
+    "2026-05-11: impact-regression-guard LOG-004 incorporated; task-orchestrator approved build with strict constraints and routed to build-agent.",
+    "2026-05-12: build-agent LOG-006 incorporated; task-orchestrator routed to review-maintainability-guard for final review.",
+    "2026-05-12: review-maintainability-guard LOG-008 incorporated; task-orchestrator closed DONE with pending human browser test notes."
+  ]
+}

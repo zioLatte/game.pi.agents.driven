@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-003",
+  "thread_id": "003-audio-not-playing",
+  "thread_name": "audio-not-playing",
+  "thread_basename": "003-audio-not-playing",
+  "title": "Audio playback not audible",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "audio-feedback",
+  "task_level": "L1",
+  "patch_budget": "small",
+  "status": "IMPACT_ANALYSIS_REQUESTED",
+  "current_owner": "gameplay-programmer",
+  "last_completed_owner": "task-orchestrator",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-03 20:42 CEST",
+  "current_status_since": "2026-05-03 20:42 CEST",
+  "last_handoff_at": "2026-05-03 20:42 CEST",
+  "opened_at": "2026-05-03 20:42 CEST",
+  "last_updated_at": "2026-05-03 20:42 CEST",
+  "resolved_at": null,
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/003-audio-not-playing/thread.md",
+  "state_file": ".agents/threads/003-audio-not-playing/state.json",
+  "log_file": ".agents/threads/003-audio-not-playing/log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-001",
+  "total_execution_minutes": 0,
+  "problem_statement": "User reports that game sounds are not audible.",
+  "game_flow_context": "feedback / SFX / BGM / input gesture / browser audio lifecycle",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    ".agents/templates/thread_template.md",
+    ".agents/templates/thread_state_template.json",
+    ".agents/templates/thread_log_template.jsonl",
+    "README.md",
+    "index.html",
+    "js/ui/audio.js",
+    "js/loader.js",
+    "main.js",
+    "sounds/*.mp3"
+  ],
+  "validated_decisions": [
+    "Treat audio as feedback clarity, not as a gameplay rule redesign.",
+    "Do not reopen wave, arena, scoring, enemy, player, bullet, or onion behavior.",
+    "Next step is technical impact analysis before any build."
+  ],
+  "validated_facts": [
+    "index.html declares audio tags for bgm, gameover-sfx, shot-sfx, bounce-sfx, onion-death-sfx, and levelup-sfx.",
+    "Referenced audio asset files exist under sounds/ and are non-empty.",
+    "js/ui/audio.js owns the audio controller for BGM/SFX playback.",
+    "main.js wires DOM audio elements into createAudioController.",
+    "README.md states that WebAudio/BGM starts only after a user gesture.",
+    "js/loader.js versions audio URLs through existing asset versioning."
+  ],
+  "draft_assumptions_in_play": [
+    "The report refers to the current browser game runtime.",
+    "The likely fix is in existing audio wiring, asset/versioning, user gesture handling, or lifecycle behavior.",
+    "New audio assets are not needed unless investigation proves an existing referenced file is invalid.",
+    "Browser manual validation is required because audibility cannot be proven with static checks alone."
+  ],
+  "current_direction": [
+    "Route to gameplay-programmer for implementation spec and file impact map.",
+    "Preserve existing SFX/BGM intent.",
+    "Keep patch small and reversible.",
+    "Require browser audio manual tests for any build."
+  ],
+  "explicit_non_goals": [
+    "No new audio assets.",
+    "No replacement soundtrack or SFX redesign.",
+    "No gameplay rule, wave, arena, scoring, enemy, player, bullet, or onion behavior changes.",
+    "No HUD/audio settings panel unless a minimal browser-unlock affordance is proven necessary.",
+    "No broad loader or app lifecycle rewrite.",
+    "No online/network/presence/nickname work."
+  ],
+  "candidate_impact_surface": [
+    "index.html",
+    "js/ui/audio.js",
+    "main.js",
+    "js/loader.js"
+  ],
+  "approved_impact_surface": [],
+  "forbidden_files": [
+    "config/levels.json",
+    "js/core/LevelManager.js",
+    "js/core/Arena.js",
+    "js/entities/**",
+    "js/ai/**",
+    "assets/**",
+    "css/**",
+    "online/network/presence files",
+    "nickname service files"
+  ],
+  "freeze_zones": [
+    "wave model",
+    "arena behavior",
+    "enemy/player/bullet/onion behavior",
+    "scoring",
+    "visual assets",
+    "network/presence/nickname services"
+  ],
+  "backward_compatibility_concerns": [
+    "Browser autoplay policy may require user gesture before BGM/SFX playback.",
+    "Changing loader asset versioning can affect all cached assets if done broadly.",
+    "Changing lifecycle resume behavior can restart audio unexpectedly after overlays or tab visibility changes.",
+    "Logging rejected play promises can aid diagnosis but must not spam normal gameplay."
+  ],
+  "required_validations": [
+    "node --input-type=module --check < changed-js-file> for each changed JS file.",
+    "Browser load with console and network check for audio asset requests.",
+    "Manual browser audio checklist covering BGM, shot, bounce, onion death, game over, level-up, and pause/resume."
+  ],
+  "human_test_checklist": [
+    "Start the game through the normal Play/user gesture path and confirm BGM becomes audible or a clear unlock path exists.",
+    "Fire a shot and confirm shot SFX is audible.",
+    "Bounce a bullet and confirm bounce SFX is audible.",
+    "Kill an onion and confirm onion death SFX is audible.",
+    "Trigger game over and confirm game-over SFX is audible while BGM behavior remains coherent.",
+    "Trigger level transition and confirm level-up SFX is audible and fade behavior remains coherent.",
+    "Pause/background and resume the tab and confirm audio does not remain permanently muted.",
+    "Hard refresh after asset versioning and confirm no stale missing audio URL remains."
+  ],
+  "open_questions": [
+    "Are audio requests succeeding in the browser network panel?",
+    "Does the browser reject play() with NotAllowedError, AbortError, unsupported media, missing asset, or another reason?",
+    "Does audio fail for all sounds or only BGM/SFX?",
+    "Does the issue reproduce only before the first user gesture, after game over/continue, or after tab visibility changes?"
+  ],
+  "artifacts": [
+    ".agents/threads/003-audio-not-playing/thread.md",
+    ".agents/threads/003-audio-not-playing/state.json",
+    ".agents/threads/003-audio-not-playing/log.jsonl"
+  ],
+  "solution_applied": [],
+  "decision_log_summary": [
+    "LOG-001: task-orchestrator opened audio bug thread and routed to gameplay-programmer for technical impact analysis."
+  ]
+}
