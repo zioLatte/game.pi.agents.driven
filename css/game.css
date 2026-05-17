@@ -22,73 +22,6 @@
       position: relative;
     }
 
-    #game-title {
-      display: block;
-      white-space: nowrap;
-      max-width: none;
-      margin-bottom: 8px;
-      padding: 10px 12px;
-      border: 2px solid #2a2a2a;
-      border-radius: 10px;
-      background: #ffffff;
-      color: #000000;
-      font: clamp(12px, 2.4vw, 18px) monospace;
-      letter-spacing: 0.4px;
-      text-transform: uppercase;
-      text-align: center;
-      box-shadow: 0 0 16px rgba(0, 0, 0, 0.35);
-      box-sizing: border-box;
-    }
-
-    .title-line {
-      display: inline;
-      padding: 2px 4px;
-      border-radius: 6px;
-      transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
-    }
-
-    .title-line.is-white {
-      background: #ffffff;
-      color: #000000;
-      box-shadow: 0 0 0 3px #000000;
-    }
-
-    .title-line.float-up {
-      animation: titleFloatUp 0.35s ease-out;
-    }
-
-    @keyframes titleFloatUp {
-      0% {
-        transform: translateY(0);
-      }
-      60% {
-        transform: translateY(-6px);
-      }
-      100% {
-        transform: translateY(0);
-      }
-    }
-
-    #opinion-float-layer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 40;
-    }
-
-    .opinion-float {
-      font: 16px monospace;
-      font-weight: 700;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: #0b0b0b;
-      background: #ffffff;
-      padding: 2px 6px;
-      border-radius: 6px;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
-      animation: opinionFade 0.7s ease-out forwards;
-    }
-
     .level-toast {
       position: fixed;
       top: 18px;
@@ -117,27 +50,6 @@
       opacity: 1;
       transform: translate(-50%, 0);
       transition-delay: 0s;
-    }
-
-    @keyframes opinionFade {
-      0% {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      100% {
-        opacity: 0;
-        transform: translateY(-70px);
-      }
-    }
-
-    .title-word {
-      color: inherit;
-      transition: color 0.2s ease, text-shadow 0.2s ease;
-    }
-
-    .title-word.highlight {
-      color: #ffde7a;
-      text-shadow: 0 0 10px rgba(255, 222, 122, 0.7);
     }
 
     #game-wrap {
@@ -944,7 +856,7 @@
       }
     }
 
-    /* Layout compatto: su schermi stretti si nasconde il titolo per liberare spazio */
+    /* Layout compatto */
     @media (max-width: 900px) {
       #layout {
         gap: 0;
@@ -956,9 +868,6 @@
       .level-toast {
         top: 10px;
         font-size: 14px;
-      }
-      #game-title {
-        display: none;
       }
       .run-hud {
         order: -1;
@@ -998,9 +907,6 @@
     }
 
     @media (max-width: 900px) and (orientation: portrait) {
-      body.is-touch #game-title {
-        display: block;
-      }
       body.is-touch #game-wrap {
         margin-top: 8px;
       }

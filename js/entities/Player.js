@@ -257,10 +257,6 @@ export class Player {
     }
 
     window.lastPlayerShot = now ?? performance.now();
-
-    if (window.flashTitlePi) {
-      window.flashTitlePi(now);
-    }
   }
 
   draw(ctxOverride, now) {

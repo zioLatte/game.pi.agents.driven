@@ -52,10 +52,6 @@ const shotSfxEl = document.getElementById("shot-sfx");
 const bounceSfxEl = document.getElementById("bounce-sfx");
 const onionDeathSfxEl = document.getElementById("onion-death-sfx");
 const levelupSfxEl = document.getElementById("levelup-sfx");
-const titleOnionLineEl = document.getElementById("title-onion-line");
-const titlePiLineEl = document.getElementById("title-pi-line");
-const titleOpinionLineEl = document.getElementById("title-opinion-line");
-const opinionFloatLayer = document.getElementById("opinion-float-layer");
 const playersPanelEl = document.getElementById("players-panel");
 const runHudEl = document.getElementById("run-hud");
 const runHudLevelEl = document.getElementById("run-hud-level");
@@ -98,9 +94,6 @@ const audio = createAudioController({
 let levelOnionPreloadPromise = null;
 let levelOnionPreloadDone = false;
 let levelOverlayPending = false;
-let titleFlashTarget = null;
-let titleFlashUntil = 0;
-let lastOpinionFlashUntil = 0;
 let assetsLoaded = false;
 let startPending = false;
 let levelOnionAnimHandler = null;
@@ -341,71 +334,6 @@ window.playShotSfx = playShotSfx;
 window.playBounceSfx = playBounceSfx;
 function playOnionDeathSfx() {
   audio.playOnionDeathSfx();
-}
-
-function setTitleHighlight(target) {
-  if (!titleOnionLineEl || !titlePiLineEl || !titleOpinionLineEl) return;
-  titleOnionLineEl.classList.toggle("is-white", target === "onion");
-  titlePiLineEl.classList.toggle("is-white", target === "pi");
-  titleOpinionLineEl.classList.toggle("is-white", target === "opinion");
-  if (target === "opinion") {
-    titleOpinionLineEl.classList.remove("float-up");
-    void titleOpinionLineEl.offsetWidth;
-    titleOpinionLineEl.classList.add("float-up");
-    spawnOpinionFloat();
-  }
-}
-
-function spawnOpinionFloat() {
-  if (!opinionFloatLayer || !gameWrapEl) return;
-  if (isPaused || isOverlayActive()) return;
-  const titleRect = titleOpinionLineEl?.getBoundingClientRect();
-  const floatEl = document.createElement("div");
-  floatEl.className = "opinion-float";
-  floatEl.textContent = "OPINION";
-  const left = titleRect ? titleRect.left : 0;
-  const top = titleRect ? titleRect.top : 0;
-  floatEl.style.left = `${left}px`;
-  floatEl.style.top = `${top}px`;
-  floatEl.style.position = "fixed";
-  opinionFloatLayer.appendChild(floatEl);
-  floatEl.addEventListener("animationend", () => {
-    floatEl.remove();
-  });
-}
-
-function flashTitle(target, durationMs = 300, now) {
-  const frameNow = now ?? performance.now();
-  titleFlashTarget = target;
-  titleFlashUntil = frameNow + durationMs;
-  setTitleHighlight(target);
-}
-
-window.flashTitlePi = (now) => flashTitle("pi", 180, now);
-function flashTitleOpinion(now) {
-  const frameNow = now ?? performance.now();
-  lastOpinionFlashUntil = frameNow + 260;
-  flashTitle("opinion", 260, frameNow);
-}
-
-function updateTitleFromState(now) {
-  if (!titleOnionLineEl) return;
-  const frameNow = now ?? performance.now();
-  if (titleFlashTarget && frameNow < titleFlashUntil) {
-    setTitleHighlight(titleFlashTarget);
-    return;
-  }
-  if (titleFlashTarget) titleFlashTarget = null;
-  const hasBullets = player?.bullets?.some((b) => b.alive);
-  if (hasBullets) {
-    setTitleHighlight("pi");
-    return;
-  }
-  if (frameNow < lastOpinionFlashUntil) {
-    setTitleHighlight("opinion");
-    return;
-  }
-  setTitleHighlight("onion");
 }
 
 function playLevelupSfx() {
@@ -1265,7 +1193,6 @@ function update(dt, now) {
   // 2) player
   player.update(dt, input, now);
   window.isShooting = now - (window.lastPlayerShot ?? Number.NEGATIVE_INFINITY) < 120;
-  updateTitleFromState(now);
 
   // 3) onions
   for (const o of onions) o.update(dt, now);
@@ -1352,7 +1279,6 @@ function update(dt, now) {
         addScreenShake(0.12);
         triggerGameFlash("rgba(255, 170, 120, 1)", 0.1);
         playOnionDeathSfx();
-        flashTitleOpinion(now);
 
         break;
       }
