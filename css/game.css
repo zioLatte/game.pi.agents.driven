@@ -181,8 +181,7 @@
       border: 3px solid #f1cf68;
       border-radius: 4px;
       background-color: rgba(9, 11, 12, 0.94);
-      background-image: url("../assets/ui/hud-frame.png"), linear-gradient(180deg, rgba(41, 46, 48, 0.96), rgba(9, 11, 12, 0.96));
-      background-size: 100% 100%, auto;
+      background-image: linear-gradient(180deg, rgba(41, 46, 48, 0.96), rgba(9, 11, 12, 0.96));
       color: #f6f0d4;
       font: 13px monospace;
       text-transform: uppercase;

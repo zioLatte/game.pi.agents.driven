@@ -1,21 +1,6 @@
 // Lightweight optional image asset loader for pixel-art rendering.
 
-export const ARENA_ASSET_MANIFEST = [
-  { id: "tiles.arenaFloor", path: "./assets/tiles/arena-floor.png" },
-  { id: "tiles.outsideDirt", path: "./assets/tiles/outside-dirt.png" },
-  { id: "tiles.outsideAsphalt", path: "./assets/tiles/outside-asphalt.png" },
-  { id: "tiles.wallStraight", path: "./assets/tiles/wall-straight.png" },
-  { id: "tiles.wallCorner", path: "./assets/tiles/wall-corner.png" },
-  { id: "tiles.gateHorizontal", path: "./assets/tiles/gate-horizontal.png" },
-  { id: "tiles.gateVertical", path: "./assets/tiles/gate-vertical.png" },
-  { id: "sprites.pichanIdle", path: "./assets/sprites/pichan-idle.png" },
-  { id: "sprites.onionIdle", path: "./assets/sprites/onion-idle.png" },
-  { id: "sprites.onionQueued", path: "./assets/sprites/onion-queued.png" },
-  { id: "sprites.speedBolt", path: "./assets/sprites/speed-bolt.png" },
-  { id: "sprites.boostRing", path: "./assets/sprites/boost-ring.png" },
-  { id: "ui.hudFrame", path: "./assets/ui/hud-frame.png" },
-  { id: "ui.hudIcons", path: "./assets/ui/hud-icons.png" }
-];
+export const ARENA_ASSET_MANIFEST = [];
 
 export class AssetLoader {
   constructor(manifest = [], { version = null } = {}) {

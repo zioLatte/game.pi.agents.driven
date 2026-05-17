@@ -295,21 +295,10 @@ export class Onion {
     return Math.max(0, Math.min(1, remaining / this.speedBoostDurationMs));
   }
 
-  canTargetSpeedDot(now = performance.now(), dot = this.speedDotTarget) {
+  canTargetSpeedDot(now = performance.now()) {
     const frameNow = Number.isFinite(now) ? now : performance.now();
     if (!this.alive || this.dying || this.isSpeedBoosted(frameNow)) return false;
-    if (this.state !== ONION_STATE.CHASE_PICHAN) return true;
-    if (!dot || !this.player) return false;
-
-    const dotDistance = Math.hypot(dot.x - this.x, dot.y - this.y);
-    const playerDistance = Math.hypot(this.player.x - this.x, this.player.y - this.y);
-    const usefulDistance = Math.max(0, Number(dot.chaseOpportunityDistance) || 0);
-    const immediatePlayerDistance = Math.max(0, Number(dot.chaseImmediatePlayerDistance) || 0);
-    const advantageRatio = Math.max(0, Number(dot.chaseDotAdvantageRatio) || 0.75);
-
-    return dotDistance <= usefulDistance
-      && playerDistance > immediatePlayerDistance
-      && dotDistance < playerDistance * advantageRatio;
+    return this.state !== ONION_STATE.CHASE_PICHAN;
   }
 
   setSpeedDotTarget(dot) {
@@ -320,10 +309,7 @@ export class Onion {
     this.speedDotTarget = {
       x: dot.x,
       y: dot.y,
-      r: dot.r,
-      chaseOpportunityDistance: dot.chaseOpportunityDistance,
-      chaseImmediatePlayerDistance: dot.chaseImmediatePlayerDistance,
-      chaseDotAdvantageRatio: dot.chaseDotAdvantageRatio
+      r: dot.r
     };
   }
 

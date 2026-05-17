@@ -13,11 +13,11 @@ const SPEED_DOT_DEFAULTS = {
   boostDurationMs: 3000,
   boostSpeedMultiplier: 1.35,
   firstSpawnDelayMsRange: [5000, 8000],
-  respawnDelayMsRange: [6000, 10000],
-  chaseOpportunityDistance: 170,
-  chaseImmediatePlayerDistance: 130,
-  chaseDotAdvantageRatio: 0.75
+  respawnDelayMsRange: [6000, 10000]
 };
+const ARENA_OUTER_PADDING_RATIO = 0.1;
+const ARENA_OUTER_PADDING_MIN = 44;
+const ARENA_OUTER_PADDING_MAX = 72;
 
 export class LevelManager {
   constructor(ctx, worldWidth = 960, worldHeight = 600, levelConfig = null) {
@@ -113,12 +113,13 @@ export class LevelManager {
       this.worldHeight
     );
 
+    const arenaPadding = this.#resolveArenaPadding();
     this.arena = new Arena(
       this.worldWidth,
       this.worldHeight,
       config.arenaShape,
-      0,
-      0
+      arenaPadding.x,
+      arenaPadding.y
     );
     this.player.arena = this.arena;
 
@@ -385,16 +386,7 @@ export class LevelManager {
       boostDurationMs: Number.isFinite(duration) && duration > 0 ? duration : SPEED_DOT_DEFAULTS.boostDurationMs,
       boostSpeedMultiplier: Number.isFinite(multiplier) && multiplier > 1 ? multiplier : SPEED_DOT_DEFAULTS.boostSpeedMultiplier,
       firstSpawnDelayMsRange: readRange(raw?.firstSpawnDelayMsRange, SPEED_DOT_DEFAULTS.firstSpawnDelayMsRange),
-      respawnDelayMsRange: readRange(raw?.respawnDelayMsRange, SPEED_DOT_DEFAULTS.respawnDelayMsRange),
-      chaseOpportunityDistance: Number.isFinite(Number(raw?.chaseOpportunityDistance))
-        ? Math.max(0, Number(raw.chaseOpportunityDistance))
-        : SPEED_DOT_DEFAULTS.chaseOpportunityDistance,
-      chaseImmediatePlayerDistance: Number.isFinite(Number(raw?.chaseImmediatePlayerDistance))
-        ? Math.max(0, Number(raw.chaseImmediatePlayerDistance))
-        : SPEED_DOT_DEFAULTS.chaseImmediatePlayerDistance,
-      chaseDotAdvantageRatio: Number.isFinite(Number(raw?.chaseDotAdvantageRatio))
-        ? Math.max(0, Number(raw.chaseDotAdvantageRatio))
-        : SPEED_DOT_DEFAULTS.chaseDotAdvantageRatio
+      respawnDelayMsRange: readRange(raw?.respawnDelayMsRange, SPEED_DOT_DEFAULTS.respawnDelayMsRange)
     };
   }
 
@@ -402,6 +394,15 @@ export class LevelManager {
     const min = Number(range?.[0]) || 0;
     const max = Number(range?.[1]) || min;
     return min + Math.random() * Math.max(0, max - min);
+  }
+
+  #resolveArenaPadding() {
+    const minDimension = Math.min(this.worldWidth, this.worldHeight);
+    const padding = Math.max(
+      ARENA_OUTER_PADDING_MIN,
+      Math.min(ARENA_OUTER_PADDING_MAX, minDimension * ARENA_OUTER_PADDING_RATIO)
+    );
+    return { x: padding, y: padding };
   }
 
   #spawnSpeedDot(now) {
@@ -443,23 +444,8 @@ export class LevelManager {
     const target = {
       x: dot.x,
       y: dot.y,
-      r: dot.r,
-      chaseOpportunityDistance: this.speedDotConfig.chaseOpportunityDistance,
-      chaseImmediatePlayerDistance: this.speedDotConfig.chaseImmediatePlayerDistance,
-      chaseDotAdvantageRatio: this.speedDotConfig.chaseDotAdvantageRatio
+      r: dot.r
     };
-    const currentTarget = dot.targetOnion;
-    if (
-      currentTarget
-      && typeof currentTarget.canTargetSpeedDot === "function"
-      && currentTarget.canTargetSpeedDot(now, target)
-    ) {
-      const dx = currentTarget.x - dot.x;
-      const dy = currentTarget.y - dot.y;
-      best = currentTarget;
-      bestDistSq = (dx * dx + dy * dy) * 0.78;
-    }
-
     for (const onion of this.onions) {
       if (!onion || typeof onion.canTargetSpeedDot !== "function" || !onion.canTargetSpeedDot(now, target)) {
         onion?.clearSpeedDotTarget?.();
