@@ -5,6 +5,7 @@
 import { Engine } from "./js/core/Engine.js";
 import { Input } from "./js/core/Input.js";
 import { LevelManager } from "./js/core/LevelManager.js";
+import { resolveArenaGates } from "./js/core/ArenaGates.js";
 import { resolveCircleCircle } from "./js/core/physics.js";
 import { state } from "./js/core/state.js";
 import { AssetLoader, ARENA_ASSET_MANIFEST } from "./js/core/assets.js";
@@ -1075,40 +1076,6 @@ function drawArenaFloor(ctx, arena) {
   ctx.restore();
 }
 
-function getArenaGates(arena) {
-  if (!arena?.points?.length) return [];
-  const gates = [];
-  const points = arena.points;
-
-  for (let i = 0; i < points.length; i += 1) {
-    const p1 = points[i];
-    const p2 = points[(i + 1) % points.length];
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-    const length = Math.hypot(dx, dy);
-    if (length < 48) continue;
-
-    const normal = arena.normals?.[i] || { x: 0, y: 1 };
-    const tangentX = dx / length;
-    const tangentY = dy / length;
-    gates.push({
-      x: (p1.x + p2.x) * 0.5,
-      y: (p1.y + p2.y) * 0.5,
-      length: Math.min(92, Math.max(54, length * 0.22)),
-      wallLength: length,
-      angle: Math.atan2(dy, dx),
-      tangentX,
-      tangentY,
-      normalX: normal.x,
-      normalY: normal.y,
-      p1,
-      p2
-    });
-  }
-
-  return gates;
-}
-
 function drawWallRun(ctx, startX, width, thickness) {
   if (width <= 0) return;
   if (fillTexturedRect(ctx, "tiles.wallStraight", startX, -thickness * 0.5, width, thickness)) return;
@@ -1231,6 +1198,7 @@ function drawQueuedOnionPreviews(ctx, gates, progress, now) {
   if (!gates.length || !progress) return;
   const queuedCount = Math.max(0, Number(progress.queuedOnions) || 0);
   const size = Math.max(18, Math.min(30, WORLD_WIDTH * 0.046));
+  const visibleMargin = size + 4;
 
   for (let i = 0; i < queuedCount; i += 1) {
     const gate = gates[i % gates.length];
@@ -1239,8 +1207,10 @@ function drawQueuedOnionPreviews(ctx, gates, progress, now) {
     const depth = size * 0.9 + row * size * 0.72;
     const outsideX = -gate.normalX;
     const outsideY = -gate.normalY;
-    const x = gate.x + outsideX * depth + gate.tangentX * laneOffset;
-    const y = gate.y + outsideY * depth + gate.tangentY * laneOffset;
+    const rawX = gate.x + outsideX * depth + gate.tangentX * laneOffset;
+    const rawY = gate.y + outsideY * depth + gate.tangentY * laneOffset;
+    const x = Math.max(visibleMargin, Math.min(WORLD_WIDTH - visibleMargin, rawX));
+    const y = Math.max(visibleMargin, Math.min(WORLD_HEIGHT - visibleMargin, rawY));
     drawQueuedOnionPreview(ctx, x, y, size, now, i);
   }
 }
@@ -1462,16 +1432,22 @@ function draw(now) {
   ctx.translate(screenFx.offsetX, screenFx.offsetY);
 
   if (arena && arena.points.length) {
-    const gates = getArenaGates(arena);
+    const gates = resolveArenaGates(arena);
     const progress = levelManager.getWaveProgress();
 
     drawOutsideTerrain(ctx);
     drawArenaFloor(ctx, arena);
-    drawArenaWallsAndGates(ctx, arena, gates);
     drawQueuedOnionPreviews(ctx, gates, progress, now);
+
+    ctx.save();
+    drawArenaPath(ctx, arena.points);
+    ctx.clip();
     drawSpeedDot(ctx, levelManager.getSpeedDot(), now);
     onions.forEach((o) => o.draw(ctx, now));
     player.draw(ctx, now);
+    ctx.restore();
+
+    drawArenaWallsAndGates(ctx, arena, gates);
   } else {
     drawOutsideTerrain(ctx);
     drawSpeedDot(ctx, levelManager.getSpeedDot(), now);

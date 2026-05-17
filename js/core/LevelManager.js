@@ -3,6 +3,7 @@
 // ==========================================================
 
 import { Arena } from "./Arena.js";
+import { resolveGateSpawn } from "./ArenaGates.js";
 import { Onion } from "../entities/Onion.js";
 import { Player } from "../entities/Player.js";
 
@@ -531,6 +532,11 @@ export class LevelManager {
     onion.dodgeEnabled = config.pressureIndex >= 2 && (spawnIndex % 3 === 0);
 
     if (this.arena) {
+      const gateSpawn = resolveGateSpawn(this.arena, onion.r, spawnIndex, Math.random);
+      if (gateSpawn) {
+        onion.x = gateSpawn.x;
+        onion.y = gateSpawn.y;
+      }
       const res = this.arena.constrainCircle(onion.x, onion.y, onion.r);
       onion.x = res.x;
       onion.y = res.y;
