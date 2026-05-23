@@ -113,41 +113,63 @@
       <canvas id="game" width="614" height="614"></canvas>
     </div>
     <aside id="run-hud" class="run-hud" aria-label="Run status">
-      <div class="run-hud__row">
-        <span>LV</span>
-        <strong id="run-hud-level">1</strong>
+      <div class="run-hud__marquee">
+        <div class="run-hud__title">ZIO LATTE!</div>
+        <div class="run-hud__subtitle">PI-CHAN</div>
       </div>
-      <div class="run-hud__row">
-        <span>OPINION</span>
-        <strong id="run-hud-opinion">0</strong>
+
+      <div class="run-hud__block run-hud__block--level">
+        <div class="run-hud__label">LV</div>
+        <strong id="run-hud-level" class="run-hud__level">1</strong>
       </div>
-      <div class="run-hud__block">
+
+      <div class="run-hud__block run-hud__block--score">
+        <div class="run-hud__label">OPINION</div>
+        <strong id="run-hud-opinion" class="run-hud__score">00000</strong>
+      </div>
+
+      <div class="run-hud__block run-hud__block--wave">
         <div class="run-hud__row">
-          <span>NEXT WAVE</span>
-          <strong id="run-hud-wave-text">0%</strong>
+          <span class="run-hud__label">NEXT WAVE</span>
+          <strong id="run-hud-wave-text">0 / 0</strong>
         </div>
-        <div class="run-hud__meter" aria-hidden="true">
+        <div id="run-hud-wave-state" class="run-hud__sub">0%</div>
+        <div class="run-hud__meter run-hud__meter--segmented" aria-hidden="true">
           <div id="run-hud-wave-bar" class="run-hud__meter-fill"></div>
         </div>
       </div>
-      <div class="run-hud__block">
+
+      <div class="run-hud__block run-hud__block--pichan">
         <div class="run-hud__row">
-          <span>ONIONS</span>
-          <strong id="run-hud-onions">0/0</strong>
+          <span class="run-hud__label">PI-CHAN</span>
+          <strong id="run-hud-boost">READY</strong>
         </div>
-        <div id="run-hud-onions-left" class="run-hud__sub">0 left</div>
+        <div class="run-hud__pilot">
+          <img class="run-hud__pilot-sprite" src="assets/pi_chan_dx_small.png" alt="" />
+          <div class="run-hud__meter run-hud__meter--boost" aria-hidden="true">
+            <div id="run-hud-boost-bar" class="run-hud__meter-fill"></div>
+          </div>
+        </div>
       </div>
-      <div class="run-hud__row">
-        <span>QUEUE</span>
-        <strong id="run-hud-queued">0</strong>
+
+      <div class="run-hud__block run-hud__block--bolt">
+        <div class="run-hud__row">
+          <span class="run-hud__label">BOLT</span>
+          <strong id="run-hud-dot">READY</strong>
+        </div>
+        <div id="run-hud-dot-timer" class="run-hud__sub">READY</div>
       </div>
-      <div class="run-hud__row">
-        <span>BOOST</span>
-        <strong id="run-hud-boost">READY</strong>
-      </div>
-      <div class="run-hud__row">
-        <span>BOLT</span>
-        <strong id="run-hud-dot">WAIT</strong>
+
+      <div class="run-hud__block run-hud__block--onion">
+        <div class="run-hud__label">ONION PRESSURE</div>
+        <div class="run-hud__pressure-grid" aria-label="Onion pressure details">
+          <span>ACTIVE</span>
+          <strong id="run-hud-onions">0 / 0</strong>
+          <span>LEFT</span>
+          <strong id="run-hud-onions-left">0</strong>
+          <span>QUEUE</span>
+          <strong id="run-hud-queued">0</strong>
+        </div>
       </div>
     </aside>
     <aside id="players-panel" class="players-panel" aria-label="Players online">

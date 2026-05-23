@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-009",
+  "thread_name": "preserve-pichan-wave-position",
+  "thread_basename": "APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-009-preserve-pichan-wave-position",
+  "title": "preserve Pi-chan position on wave/level advance",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "TBD",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "wave-transition",
+  "task_level": "L1",
+  "patch_budget": "tiny",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-18 05:49 CEST",
+  "current_status_since": "2026-05-18 05:49 CEST",
+  "last_handoff_at": "2026-05-18 05:49 CEST",
+  "opened_at": "2026-05-18 05:49 CEST",
+  "last_updated_at": "2026-05-18 05:51 CEST",
+  "resolved_at": "2026-05-18 05:51 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-009-preserve-pichan-wave-position.md",
+  "state_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-009-preserve-pichan-wave-position.state.json",
+  "log_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-009-preserve-pichan-wave-position.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-005",
+  "total_execution_minutes": 2,
+  "problem_statement": "Pi-chan is reset to center on wave/level advance because loadLevel recreates Player at default coordinates.",
+  "game_flow_context": "wave completion and next-level transition only",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    "main.js",
+    "js/core/LevelManager.js"
+  ],
+  "validated_decisions": [
+    "Preserve only x/y on wave-complete level advance.",
+    "Do not preserve bullets, boost, cooldown or other Player runtime state.",
+    "Default load/reset/goto/continue behavior remains centered unless explicitly passed a position."
+  ],
+  "draft_assumptions_in_play": [
+    "A new Player at prior coordinates is safer than reusing the old Player object.",
+    "Preserved coordinates should be constrained to the new arena."
+  ],
+  "current_direction": [
+    "Add optional playerStartPosition to LevelManager.loadLevel.",
+    "Pass prior player position only from the isWaveComplete next-level path."
+  ],
+  "explicit_non_goals": [
+    "No spawn changes.",
+    "No Speed Dot changes.",
+    "No onion behavior changes.",
+    "No Player.js edits.",
+    "No config changes.",
+    "No HUD/style changes."
+  ],
+  "approved_impact_surface": [
+    "main.js",
+    "js/core/LevelManager.js"
+  ],
+  "forbidden_files": [
+    "js/entities/Player.js",
+    "js/entities/Onion.js",
+    "js/entities/Bullet.js",
+    "js/ai/OnionAI.js",
+    "config/levels.json",
+    "index.html",
+    "css/game.css",
+    "assets/**",
+    "sounds/**"
+  ],
+  "freeze_zones": [
+    "onion spawn/cadence/cap/budget",
+    "Speed Dot mechanics",
+    "collision",
+    "controls",
+    "score",
+    "level progression rules"
+  ],
+  "backward_compatibility_concerns": [
+    "Other loadLevel callers must preserve current behavior.",
+    "Position must not be outside the newly built arena."
+  ],
+  "required_validations": [
+    "node --input-type=module --check < main.js",
+    "node --input-type=module --check < js/core/LevelManager.js",
+    "local static launch if possible",
+    "PHPMD not applicable unless PHP/config is present"
+  ],
+  "human_test_checklist": [
+    "start level 1",
+    "move Pi-chan away from center",
+    "clear wave",
+    "verify next level starts at same constrained position",
+    "verify reset/goto/continue do not inherit stale position",
+    "verify spawn/Speed Dot/collision/controls unchanged"
+  ],
+  "open_questions": [],
+  "artifacts": [],
+  "solution_applied": [
+    "LevelManager.loadLevel accepts optional playerStartPosition.",
+    "LevelManager creates a fresh Player at the provided x/y when present and constrains it into the new arena.",
+    "main.js passes current Pi-chan x/y only from the wave-complete next-level path.",
+    "Reset, goto, continue, spawn, Speed Dot and progression rules remain unchanged."
+  ],
+  "decision_log_summary": [
+    "Created direct APPROVED_FOR_BUILD thread for a tiny wave-transition position preservation patch.",
+    "Build completed and reviewed with APPROVE_WITH_NOTES.",
+    "Task closed DONE."
+  ]
+}

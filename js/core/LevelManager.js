@@ -75,7 +75,9 @@ export class LevelManager {
     });
   }
 
-  loadLevel(num = 1) {
+  loadLevel(num = 1, options = {}) {
+    const playerStartPosition = options?.playerStartPosition ?? null;
+
     this.clearLevel();
 
     window.isShooting = false;
@@ -83,7 +85,7 @@ export class LevelManager {
     window.chaseEndTime = Number.NEGATIVE_INFINITY;
 
     this.currentLevel = num;
-    this.#buildLevel();
+    this.#buildLevel({ playerStartPosition });
   }
 
   clearLevel() {
@@ -95,8 +97,12 @@ export class LevelManager {
     this.speedDotState = this.#createSpeedDotState();
   }
 
-  #buildLevel() {
+  #buildLevel(options = {}) {
     const config = this.getLevelConfig(this.currentLevel);
+    const startX = Number(options?.playerStartPosition?.x);
+    const startY = Number(options?.playerStartPosition?.y);
+    const hasPlayerStartPosition = Number.isFinite(startX) && Number.isFinite(startY);
+
     this.waveState = {
       maxAliveOnions: config.maxAliveOnions,
       totalOnions: config.totalOnions,
@@ -106,8 +112,8 @@ export class LevelManager {
     };
 
     this.player = new Player(
-      this.worldWidth / 2,
-      this.worldHeight / 2,
+      hasPlayerStartPosition ? startX : this.worldWidth / 2,
+      hasPlayerStartPosition ? startY : this.worldHeight / 2,
       this.ctx,
       this.worldWidth,
       this.worldHeight
@@ -122,6 +128,11 @@ export class LevelManager {
       arenaPadding.y
     );
     this.player.arena = this.arena;
+    if (hasPlayerStartPosition) {
+      const constrained = this.arena.constrainCircle(this.player.x, this.player.y, this.player.r);
+      this.player.x = constrained.x;
+      this.player.y = constrained.y;
+    }
 
     const initialCount = Math.min(this.waveState.maxAliveOnions, this.waveState.totalOnions);
     for (let i = 0; i < initialCount; i++) {
@@ -146,6 +157,23 @@ export class LevelManager {
       r: dot.r,
       spawnedAt: dot.spawnedAt,
       targetOnion: dot.targetOnion
+    };
+  }
+
+  getSpeedDotStatus(now = performance.now()) {
+    const frameNow = Number.isFinite(now) ? now : performance.now();
+    const dot = this.speedDotState;
+    const nextSpawnAt = Number.isFinite(dot?.nextSpawnAt) ? dot.nextSpawnAt : null;
+    const remainingMs = nextSpawnAt === null ? 0 : Math.max(0, nextSpawnAt - frameNow);
+
+    return {
+      enabled: this.speedDotConfig.enabled,
+      state: dot?.active ? "ACTIVE" : (remainingMs > 0 ? "RESPAWN" : "READY"),
+      active: Boolean(dot?.active),
+      spawnedAt: Number(dot?.spawnedAt) || 0,
+      nextSpawnAt,
+      remainingMs,
+      hasTargetOnion: Boolean(dot?.targetOnion)
     };
   }
 

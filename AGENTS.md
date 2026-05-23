@@ -195,3 +195,5 @@ Focus specifico:
 
 ## Output style
 Secco, tecnico, critico, concreto. Niente lodi, niente fuffa.
+
+quando un task è terminato, fornisci sempre messaggio per la commit

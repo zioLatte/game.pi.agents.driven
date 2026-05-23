@@ -57,12 +57,15 @@ const runHudEl = document.getElementById("run-hud");
 const runHudLevelEl = document.getElementById("run-hud-level");
 const runHudOpinionEl = document.getElementById("run-hud-opinion");
 const runHudWaveTextEl = document.getElementById("run-hud-wave-text");
+const runHudWaveStateEl = document.getElementById("run-hud-wave-state");
 const runHudWaveBarEl = document.getElementById("run-hud-wave-bar");
 const runHudOnionsEl = document.getElementById("run-hud-onions");
 const runHudOnionsLeftEl = document.getElementById("run-hud-onions-left");
 const runHudQueuedEl = document.getElementById("run-hud-queued");
 const runHudBoostEl = document.getElementById("run-hud-boost");
+const runHudBoostBarEl = document.getElementById("run-hud-boost-bar");
 const runHudDotEl = document.getElementById("run-hud-dot");
+const runHudDotTimerEl = document.getElementById("run-hud-dot-timer");
 const levelToastEl = document.getElementById("level-toast");
 const touchControlsEl = document.getElementById("touch-controls");
 const touchFireBtnEl = document.getElementById("touch-fire");
@@ -391,21 +394,62 @@ function showLevelToast(level) {
   }, LEVEL_TOAST_DURATION_MS);
 }
 
+function formatArcadeCounter(value, width = 5) {
+  const numericValue = Math.max(0, Math.floor(Number(value) || 0));
+  return String(numericValue).padStart(width, "0");
+}
+
+function formatHudRatio(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(1, numericValue));
+}
+
+function formatHudSeconds(ms) {
+  const numericValue = Math.max(0, Number(ms) || 0);
+  return `${Math.ceil(numericValue / 1000)}s`;
+}
+
+function resolveBoltHudStatus(speedDotStatus, boostRatio) {
+  if (boostRatio > 0) return "BOOST";
+  if (speedDotStatus?.state === "ACTIVE") return "ACTIVE";
+  if ((speedDotStatus?.remainingMs ?? 0) > 0) return "RESPAWN";
+  return "READY";
+}
+
 function updateRunHud() {
   const progress = levelManager.getWaveProgress();
-  const percent = Math.round(progress.progressRatio * 100);
-  const boostRatio = player?.getSpeedBoostRemainingRatio?.(performance.now()) ?? 0;
-  const speedDot = levelManager.getSpeedDot();
+  const progressRatio = formatHudRatio(progress.progressRatio);
+  const percent = Math.round(progressRatio * 100);
+  const now = performance.now();
+  const boostRatio = formatHudRatio(player?.getSpeedBoostRemainingRatio?.(now) ?? 0);
+  const speedDotStatus = levelManager.getSpeedDotStatus?.(now) ?? null;
+  const boltStatus = resolveBoltHudStatus(speedDotStatus, boostRatio);
 
   if (runHudLevelEl) runHudLevelEl.textContent = String(progress.currentLevel);
-  if (runHudOpinionEl) runHudOpinionEl.textContent = String(state.score);
-  if (runHudWaveTextEl) runHudWaveTextEl.textContent = progress.isComplete ? "CLEAR" : `${percent}%`;
-  if (runHudWaveBarEl) runHudWaveBarEl.style.transform = `scaleX(${progress.progressRatio})`;
-  if (runHudOnionsEl) runHudOnionsEl.textContent = `${progress.clearedOnions}/${progress.totalOnions}`;
-  if (runHudOnionsLeftEl) runHudOnionsLeftEl.textContent = `${progress.remainingOnions} left`;
+  if (runHudOpinionEl) runHudOpinionEl.textContent = formatArcadeCounter(state.score);
+  if (runHudWaveTextEl) runHudWaveTextEl.textContent = `${progress.clearedOnions} / ${progress.totalOnions}`;
+  if (runHudWaveStateEl) runHudWaveStateEl.textContent = progress.isComplete ? "CLEAR" : `${percent}%`;
+  if (runHudWaveBarEl) runHudWaveBarEl.style.transform = `scaleX(${progressRatio})`;
+  if (runHudOnionsEl) runHudOnionsEl.textContent = `${progress.activePressureCount} / ${progress.maxAliveOnions}`;
+  if (runHudOnionsLeftEl) runHudOnionsLeftEl.textContent = String(progress.remainingOnions);
   if (runHudQueuedEl) runHudQueuedEl.textContent = String(progress.queuedOnions);
-  if (runHudBoostEl) runHudBoostEl.textContent = boostRatio > 0 ? `${Math.ceil(boostRatio * 100)}%` : "READY";
-  if (runHudDotEl) runHudDotEl.textContent = speedDot ? "FIELD" : "WAIT";
+  if (runHudBoostEl) runHudBoostEl.textContent = boostRatio > 0 ? `BOOST ${Math.ceil(boostRatio * 100)}%` : "READY";
+  if (runHudBoostBarEl) runHudBoostBarEl.style.transform = `scaleX(${boostRatio})`;
+  if (runHudDotEl) runHudDotEl.textContent = boltStatus;
+  if (runHudDotTimerEl) {
+    if (boltStatus === "BOOST") {
+      runHudDotTimerEl.textContent = `PI ${Math.ceil(boostRatio * 100)}%`;
+    } else if (boltStatus === "RESPAWN") {
+      runHudDotTimerEl.textContent = `IN ${formatHudSeconds(speedDotStatus.remainingMs)}`;
+    } else {
+      runHudDotTimerEl.textContent = boltStatus === "ACTIVE" ? "IN FIELD" : "READY";
+    }
+  }
+  if (runHudEl) {
+    runHudEl.dataset.bolt = boltStatus.toLowerCase();
+    runHudEl.dataset.boost = boostRatio > 0 ? "active" : "ready";
+  }
 }
 
 function stopAllAudio() {
@@ -663,8 +707,10 @@ state.reset();
 pendingGameStart = true;
 updateRunHud();
 
-function resetGame(level = 1, resetState = true) {
-  levelManager.loadLevel(level);
+function resetGame(level = 1, resetState = true, options = {}) {
+  levelManager.loadLevel(level, {
+    playerStartPosition: options?.playerStartPosition ?? null
+  });
   player = levelManager.getPlayer();
   onions = levelManager.getOnions();
   player.bulletMaxBounces = levelManager.getBulletBounceCount(level);
@@ -1225,9 +1271,10 @@ function update(dt, now) {
   // level up quando il budget della wave è esaurito e non restano onion visibili
   if (levelManager.isWaveComplete()) {
     const nextLevel = levelManager.currentLevel + 1;
+    const playerStartPosition = { x: player.x, y: player.y };
     addScreenShake(0.2);
     triggerGameFlash("rgba(255, 245, 210, 1)", 0.14);
-    resetGame(nextLevel, false);
+    resetGame(nextLevel, false, { playerStartPosition });
     syncMaxLevelStat();
     playLevelupSfx();
     showLevelToast(nextLevel);

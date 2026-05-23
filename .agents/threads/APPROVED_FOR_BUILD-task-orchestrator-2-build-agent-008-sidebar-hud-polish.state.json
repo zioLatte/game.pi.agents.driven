@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-008",
+  "thread_name": "sidebar-hud-polish",
+  "thread_basename": "APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-008-sidebar-hud-polish",
+  "title": "sidebar HUD arcade readability polish",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "TBD",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "ui-hud",
+  "task_level": "L1",
+  "patch_budget": "small",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-17 20:14 CEST",
+  "current_status_since": "2026-05-17 20:14 CEST",
+  "last_handoff_at": "2026-05-17 20:14 CEST",
+  "opened_at": "2026-05-17 20:08 CEST",
+  "last_updated_at": "2026-05-17 20:14 CEST",
+  "resolved_at": "2026-05-17 20:14 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-008-sidebar-hud-polish.md",
+  "state_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-008-sidebar-hud-polish.state.json",
+  "log_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-008-sidebar-hud-polish.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-005",
+  "total_execution_minutes": 8,
+  "problem_statement": "The right sidebar reads like a compact debug table and needs to become a legible arcade cabinet HUD without changing gameplay.",
+  "game_flow_context": "UI/HUD only: current level, opinion score, wave progress, Pi-chan boost, Speed Dot/Bolt state, onion pressure.",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    "index.html",
+    "css/game.css",
+    "main.js",
+    "js/core/LevelManager.js",
+    "js/entities/Player.js",
+    "js/entities/Onion.js"
+  ],
+  "validated_decisions": [
+    "Sidebar/HUD polish only.",
+    "HUD values must be backed by real runtime state.",
+    "Gameplay, spawn, gates, collision, Speed Dot mechanics, controls and level progression are frozen.",
+    "Impact guard skipped by task-orchestrator because this is a constrained UI-only task with explicit acceptance criteria."
+  ],
+  "draft_assumptions_in_play": [
+    "A small read-only Speed Dot status accessor in LevelManager is in scope.",
+    "Existing getWaveProgress fields are the source of truth for wave HUD data.",
+    "Pi-chan status should use player boost ratio because no HP value exists."
+  ],
+  "current_direction": [
+    "Physical arcade-style right panel.",
+    "Large LV and OPINION counters.",
+    "Segmented NEXT WAVE progress.",
+    "Color semantics: yellow score/Pi-chan, cyan Bolt/progress, red onion pressure, black/metal panels."
+  ],
+  "explicit_non_goals": [
+    "No gameplay changes.",
+    "No spawn changes.",
+    "No Speed Dot behavior changes.",
+    "No gates, collision, controls or level progression changes.",
+    "No minimap.",
+    "No fake decorative HUD data.",
+    "No new dependencies."
+  ],
+  "approved_impact_surface": [
+    "index.html",
+    "css/game.css",
+    "main.js",
+    "js/core/LevelManager.js"
+  ],
+  "forbidden_files": [
+    "js/entities/Player.js",
+    "js/entities/Onion.js",
+    "js/entities/Bullet.js",
+    "js/ai/OnionAI.js",
+    "config/levels.json",
+    "assets/**",
+    "sounds/**",
+    "js/services/**"
+  ],
+  "freeze_zones": [
+    "gameplay rules",
+    "spawn/cadence/cap/budget",
+    "Speed Dot mechanics",
+    "arena gates",
+    "collision",
+    "controls",
+    "level progression"
+  ],
+  "backward_compatibility_concerns": [
+    "Existing DOM ids used by main.js must remain wired or be updated consistently.",
+    "Mobile compact HUD layout must remain readable."
+  ],
+  "required_validations": [
+    "node --input-type=module --check < main.js",
+    "node --input-type=module --check < js/core/LevelManager.js",
+    "local static game launch if possible",
+    "manual HUD checklist from thread summary",
+    "PHPMD not applicable unless PHP/config is present"
+  ],
+  "human_test_checklist": [
+    "start level 1",
+    "HUD visible",
+    "score changes",
+    "wave progress changes",
+    "level up updates LV",
+    "Speed Dot/Bolt status changes",
+    "boost status visible while Pi-chan is boosted",
+    "onion pressure/queue coherent",
+    "no blocking overlay introduced"
+  ],
+  "open_questions": [],
+  "artifacts": [
+    "/tmp/pichan-hud.png"
+  ],
+  "solution_applied": [
+    "Reworked the right sidebar HUD into an arcade cabinet-style panel.",
+    "Added large LV and zero-padded OPINION display.",
+    "Added NEXT WAVE cleared/total text with real segmented progress.",
+    "Added PI-CHAN boost status from player boost ratio.",
+    "Added BOLT status from read-only Speed Dot state.",
+    "Added ONION PRESSURE active/left/queue values from wave progress."
+  ],
+  "decision_log_summary": [
+    "Created direct APPROVED_FOR_BUILD thread for a small UI-only HUD patch.",
+    "Build completed and routed to maintainability review.",
+    "Review verdict APPROVE_WITH_NOTES; task closed DONE."
+  ]
+}
