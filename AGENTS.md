@@ -56,6 +56,7 @@ Usare le skill esplicitamente quando possibile:
 - `gameplay-programmer`
 - `impact-regression-guard`
 - `build-agent`
+- `browser-runtime-qa`
 - `review-maintainability-guard`
 - `pixel-artist` solo quando serve davvero una review di leggibilità visiva/asset
 
@@ -73,6 +74,9 @@ Questo workflow è hub-and-spoke.
 - Ogni owner, incluso `task-orchestrator`, deve sempre preparare un prompt completo per il prossimo owner umano-operabile.
 - Se il prossimo owner canonico è `task-orchestrator`, il prompt deve comunque essere completo e invocabile, es. `$task-orchestrator .agents/threads/<thread-basename>/thread.md`.
 - Se `task-orchestrator` decide un owner successivo diverso, deve produrre il prompt completo per quel ruolo, es. `$impact-regression-guard .agents/threads/<thread-basename>/thread.md`.
+- `browser-runtime-qa` non modifica codice, asset, CSS, JS o config.
+- `browser-runtime-qa` usa Chrome DevTools MCP solo per raccogliere evidenze runtime osservabili nel browser reale.
+- `browser-runtime-qa` non sostituisce `review-maintainability-guard`: dopo la validazione propone sempre uno stato e ritorna a `task-orchestrator`.
 
 ## Task thread files
 Ogni task non banale deve usare tre file companion:
@@ -128,8 +132,10 @@ Default:
 7. `task-orchestrator`
 8. `build-agent` solo se `APPROVED_FOR_BUILD`
 9. `task-orchestrator`
-10. `review-maintainability-guard`
-11. `task-orchestrator` chiude `DONE` o `NEEDS_REWORK`
+10. `browser-runtime-qa` dopo build completata, quando serve validazione runtime browser reale
+11. `task-orchestrator`
+12. `review-maintainability-guard`
+13. `task-orchestrator` chiude `DONE` o `NEEDS_REWORK`
 
 `pixel-artist` è opzionale e va usato solo per problemi reali di leggibilità visiva o asset.
 

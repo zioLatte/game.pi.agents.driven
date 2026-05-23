@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-011",
+  "thread_name": "browser-runtime-qa-skill",
+  "thread_basename": "DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill",
+  "title": "add browser-runtime-qa workflow role for Chrome DevTools MCP runtime validation",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-agent-workflow",
+  "primary_area": "agent-workflow",
+  "task_level": "L1",
+  "patch_budget": "small",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "none",
+  "current_owner_since": "2026-05-23 17:08 CEST",
+  "current_status_since": "2026-05-23 17:08 CEST",
+  "last_handoff_at": "2026-05-23 17:08 CEST",
+  "opened_at": "2026-05-23 15:20 CEST",
+  "last_updated_at": "2026-05-23 17:08 CEST",
+  "resolved_at": "2026-05-23 17:08 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.md",
+  "state_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.state.json",
+  "log_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-004",
+  "total_execution_minutes": 2,
+  "problem_statement": "Extend the PI.Onion agent workflow with a dedicated browser runtime QA role for Chrome DevTools MCP evidence, separate from build, impact analysis, diff review, and game design.",
+  "game_flow_context": "workflow-only governance change; no runtime gameplay code, CSS, JS, config, asset, or data change",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    ".agents/templates/thread_template.md",
+    ".agents/templates/thread_state_template.json",
+    ".agents/templates/thread_log_template.jsonl",
+    ".agents/examples/invoke-examples.md",
+    ".agents/skills/task-orchestrator/SKILL.md",
+    ".agents/skills/build-agent/SKILL.md",
+    ".agents/skills/review-maintainability-guard/SKILL.md"
+  ],
+  "validated_decisions": [
+    "Create .agents/skills/browser-runtime-qa/SKILL.md.",
+    "Do not modify build-agent, review-maintainability-guard, or impact-regression-guard.",
+    "browser-runtime-qa works when current_owner is browser-runtime-qa and status is BUILD_DONE.",
+    "browser-runtime-qa does not modify code, CSS, JS, config, assets, or runtime data.",
+    "browser-runtime-qa uses Chrome DevTools MCP only to collect observable browser runtime evidence.",
+    "Passing runtime QA proposes IN_REVIEW and returns to task-orchestrator.",
+    "Failing runtime QA proposes NEEDS_REWORK or BLOCKED and returns to task-orchestrator.",
+    "No RUNTIME_QA_DONE canonical state is introduced.",
+    "AGENTS.md references pixel-artist, but .agents/skills/pixel-artist/SKILL.md does not exist; this mismatch is declared and left for a separate task.",
+    "New state JSON parse passed.",
+    "New log JSONL parse passed.",
+    "Markdown files created/modified are non-empty and relevant references resolve by text search.",
+    "Git status shows no runtime game file modified by this task.",
+    "LOG-003 review-maintainability-guard verdict is APPROVE_WITH_NOTES.",
+    "LOG-003 proposes DONE and returns to task-orchestrator.",
+    "No required rework remains for PI-011 before closure."
+  ],
+  "draft_assumptions_in_play": [
+    "Chrome DevTools MCP server is globally configured by the user as chrome-devtools.",
+    "The current task should not run browser runtime QA; it only adds the workflow role.",
+    "A separate task should decide whether to create or remove pixel-artist."
+  ],
+  "current_direction": [
+    "Keep runtime browser QA as a dedicated no-code role.",
+    "Route browser-runtime-qa after build-agent and before review-maintainability-guard.",
+    "Return browser-runtime-qa output to task-orchestrator.",
+    "Use existing canonical states: BUILD_DONE, IN_REVIEW, NEEDS_REWORK, BLOCKED."
+  ],
+  "explicit_non_goals": [
+    "No runtime game code edits.",
+    "No CSS, JS, config, asset, sound, or data changes.",
+    "No changes to build-agent, review-maintainability-guard, or impact-regression-guard.",
+    "No new canonical state.",
+    "No creation of pixel-artist in this task.",
+    "No Chrome DevTools runtime QA run in this task."
+  ],
+  "approved_impact_surface": [
+    "AGENTS.md",
+    ".agents/skills/browser-runtime-qa/SKILL.md",
+    ".agents/examples/invoke-examples.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.state.json",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.log.jsonl"
+  ],
+  "forbidden_files": [
+    "main.js",
+    "js/",
+    "css/",
+    "config/",
+    "assets/",
+    "sounds/",
+    "online/network/presence files",
+    ".agents/skills/build-agent/SKILL.md",
+    ".agents/skills/review-maintainability-guard/SKILL.md",
+    ".agents/skills/impact-regression-guard/SKILL.md",
+    "existing task thread 010 untracked files",
+    "unrelated dirty worktree changes"
+  ],
+  "freeze_zones": [
+    "Runtime code and data are frozen for this task.",
+    "Existing thread 010 untracked files are not part of this task.",
+    "No broad rewrite of agent workflow docs."
+  ],
+  "backward_compatibility_concerns": [
+    "Introducing a browser QA role must not imply it can edit code or replace maintainability review.",
+    "Adding a workflow step after build-agent may affect future routing expectations.",
+    "The pixel-artist reference remains unresolved."
+  ],
+  "required_validations": [
+    "Markdown files created/modified are readable: passed by non-empty/reference smoke.",
+    "JSON parse of the new state file: passed.",
+    "JSONL parse of the new log file: passed.",
+    "PHPMD not applicable unless PHP and PHPMD config exist.",
+    "No automatic gameplay/runtime test required."
+  ],
+  "human_test_checklist": [
+    "Confirm AGENTS.md lists browser-runtime-qa as an allowed role.",
+    "Confirm canonical workflow routes browser-runtime-qa after build-agent and before review-maintainability-guard.",
+    "Confirm browser-runtime-qa skill says it never modifies code and returns to task-orchestrator.",
+    "Confirm invoke examples include $browser-runtime-qa .agents/threads/<thread-basename>.md.",
+    "Confirm no runtime game file is modified."
+  ],
+  "open_questions": [
+    "Should pixel-artist be created as a real skill or removed from AGENTS.md in a separate task?",
+    "Should future review gate text require browser-runtime-qa evidence for every runtime build, or only when task-orchestrator routes it?"
+  ],
+  "artifacts": [
+    "AGENTS.md",
+    ".agents/skills/browser-runtime-qa/SKILL.md",
+    ".agents/examples/invoke-examples.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.state.json",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-011-browser-runtime-qa-skill.log.jsonl",
+    "Validation evidence captured in LOG-002"
+  ],
+  "solution_applied": [
+    "Added browser-runtime-qa as a dedicated no-code browser runtime QA skill.",
+    "Updated AGENTS.md allowed roles and canonical workflow.",
+    "Added browser-runtime-qa invocation example.",
+    "Recorded pixel-artist skill mismatch without creating that skill.",
+    "Ran documentation/thread validations.",
+    "Closed the workflow/documentation task after APPROVE_WITH_NOTES."
+  ],
+  "decision_log_summary": [
+    "LOG-001: task-orchestrator applied workflow/documentation patch, declared pixel-artist mismatch, and routed to review-maintainability-guard for scope and maintainability review.",
+    "LOG-002: task-orchestrator recorded validation results and preserved IN_REVIEW routing to review-maintainability-guard.",
+    "LOG-003: review-maintainability-guard approved with notes, found no required PI-011 rework, and proposed DONE.",
+    "LOG-004: task-orchestrator accepted review, set canonical status to DONE, and renamed companion files."
+  ]
+}

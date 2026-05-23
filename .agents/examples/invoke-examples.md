@@ -28,6 +28,10 @@ $build-agent .agents/threads/<thread-basename>.md
 ```
 
 ```text
+$browser-runtime-qa .agents/threads/<thread-basename>.md
+```
+
+```text
 $review-maintainability-guard .agents/threads/<thread-basename>.md
 ```
 

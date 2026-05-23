@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-010",
+  "thread_name": "runtime-readability-validation",
+  "thread_basename": "010-runtime-readability-validation",
+  "title": "runtime readability validation for current PI.Onion build",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "runtime-readability",
+  "task_level": "L2",
+  "patch_budget": "none",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "none",
+  "current_owner_since": "2026-05-23 17:09 CEST",
+  "current_status_since": "2026-05-23 17:09 CEST",
+  "last_handoff_at": "2026-05-23 17:09 CEST",
+  "opened_at": "2026-05-23 14:56 CEST",
+  "last_updated_at": "2026-05-23 17:09 CEST",
+  "resolved_at": "2026-05-23 17:09 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/010-runtime-readability-validation/thread.md",
+  "state_file": ".agents/threads/010-runtime-readability-validation/state.json",
+  "log_file": ".agents/threads/010-runtime-readability-validation/log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-005",
+  "total_execution_minutes": 3,
+  "problem_statement": "Validate whether the current visual/runtime presentation improves readability and preserves wave, spawn, Speed Dot, collision, reset, continue, goto, score and level-up behavior without adding features.",
+  "game_flow_context": "fixed arena / finite waves / gate spawning / outside-arena queue / right arcade HUD / continuous level transitions / Speed Dot-Bolt / collisions / reset-continue-goto",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    "docs/MASTER_STATE.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-007-msx-outrun-arena-presentation.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-008-sidebar-hud-polish.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-009-preserve-pichan-wave-position.md"
+  ],
+  "validated_decisions": [
+    "No runtime implementation is approved in this thread.",
+    "No new feature, asset, mechanic, refactor, scoring change, wave tuning change, collision change, level progression change, or OnionAI change is approved.",
+    "Current build includes gate helper references, outside queue/HUD references, continuous level toast, wave completion, and preserved Pi-chan position references.",
+    "Requested static validations passed on intake.",
+    "PHPMD is not applicable because no PHP files or PHPMD/composer config were found in the repo scan.",
+    "Initial routing is DESIGN_REQUESTED to game-designer because the allowed initial states exclude IN_REVIEW and the task needs no-code readability/rework classification.",
+    "LOG-002 game-designer is accepted as DESIGN_DONE for a partial no-code readability smoke.",
+    "LOG-002 found no observed FAIL items and requested no implementation.",
+    "LOG-002 left core runtime/manual checks NOT_TESTED: replacement spawn after clear, motion readability, Speed Dot pickup, onion contest, score update, wave completion, multi-level updates, collision death, reset, continue, and goto/debug.",
+    "LOG-004 review-maintainability-guard returned APPROVE_WITH_NOTES and status_proposal DONE.",
+    "LOG-004 confirmed tracked runtime diff scope is clean and only thread 010 files are part of this task's work surface.",
+    "LOG-004 extended browser smoke covered reset, goto/debug, natural game over, and continue without captured runtime exceptions.",
+    "No build or runtime rework is approved from this validation cycle."
+  ],
+  "draft_assumptions_in_play": [
+    "The current build should be evaluated as-is.",
+    "Any visual problem found should become a rework candidate, not an immediate code change.",
+    "Manual browser validation is required before any later build task is opened.",
+    "A confirmed regression must return to task-orchestrator for a separate narrow rework route.",
+    "Review-maintainability-guard can treat LOG-002 as the validation report in place of a build report because this is a no-code validation thread.",
+    "Residual release-confidence checks should be handled as manual playthrough, not as automatic build work."
+  ],
+  "current_direction": [
+    "Validate runtime readability and regression risk.",
+    "Keep the arena static and wave-based.",
+    "Observe gates, outside queue, sidebar, level flow, score, Speed Dot/Bolt, and wave lifecycle.",
+    "Produce concrete pass/fail observations and candidate rework only.",
+    "Close this no-code validation cycle as DONE with notes.",
+    "Do not open build without a later observed concrete failure."
+  ],
+  "explicit_non_goals": [
+    "No new assets.",
+    "No new mechanics.",
+    "No runtime feature implementation.",
+    "No refactor.",
+    "No OnionAI edits unless a later cycle proves a real blocker.",
+    "No scoring changes.",
+    "No wave budget, maxAliveOnions, spawn cadence, collision, or level progression changes.",
+    "No HUD redesign in this pass.",
+    "No arena rotation or moving arena.",
+    "No build-agent route unless a future task proves a concrete, narrow, observed failure."
+  ],
+  "approved_impact_surface": [
+    ".agents/threads/010-runtime-readability-validation/thread.md",
+    ".agents/threads/010-runtime-readability-validation/state.json",
+    ".agents/threads/010-runtime-readability-validation/log.jsonl",
+    "Read-only inspection and manual browser validation of current runtime",
+    "Optional review-maintainability-guard manual/browser validation without runtime edits"
+  ],
+  "forbidden_files": [
+    "main.js",
+    "js/core/LevelManager.js",
+    "js/core/ArenaGates.js",
+    "js/core/Arena.js",
+    "js/entities/Player.js",
+    "js/entities/Onion.js",
+    "js/entities/Bullet.js",
+    "js/ai/OnionAI.js",
+    "config/levels.json",
+    "index.html",
+    "css/game.css",
+    "assets/",
+    "sounds/",
+    "online/network/presence files",
+    "unrelated dirty worktree changes"
+  ],
+  "freeze_zones": [
+    "Runtime code and data are frozen for this validation cycle.",
+    "Canonical files for other threads are frozen.",
+    "No non-orchestrator role may update state.json or thread.md."
+  ],
+  "backward_compatibility_concerns": [
+    "Queue markers may be readable in static smoke but not under motion or narrow viewport.",
+    "Sidebar information may compete with the playfield during high pressure.",
+    "Gate language may be visible but not understandable before replacement spawn.",
+    "Level-up toast/HUD may still obscure hazards if timing overlaps pressure.",
+    "Preserved Pi-chan position across wave advance may expose spawn/collision edge cases near walls or gates.",
+    "LOG-002's smoke is insufficient for final runtime confidence because most interactive checklist items were not executed.",
+    "LOG-004 leaves residual release-confidence gaps for Speed Dot/Bolt pickup, onion contest, replacement spawn after clear, score update after kill, full wave completion/level-up, position preservation after wave advance, and motion readability under bullets/chase."
+  ],
+  "required_validations": [
+    "node --input-type=module --check < main.js: passed on intake",
+    "node --input-type=module --check < js/core/LevelManager.js: passed on intake",
+    "node --input-type=module --check < js/core/ArenaGates.js: passed on intake",
+    "JSON parse config/levels.json: passed on intake",
+    "PHPMD: not applicable; no PHP files/config found"
+  ],
+  "human_test_checklist": [
+    "Start a fresh level 1 run. Expected: no console errors; canvas, right sidebar, player, onions, gates, and outside terrain are visible immediately.",
+    "At level 1 start, identify all visible arena gates without pausing. Expected: north/east/south/west gate positions read as entrances, not random wall decoration.",
+    "Watch first onion entry without shooting it immediately. Expected: onion appears from or near a gate and movement direction makes the gate origin understandable.",
+    "Clear one onion and wait for a replacement when queue remains. Expected: replacement enters through a gate; no onion pops into the middle of the arena or outside walkable space.",
+    "Observe outside-arena queued onion previews at desktop size around 1280x800. Expected: queue markers are visible outside the active arena, near gate language, and do not overlap player/onions/HUD.",
+    "Observe the same queue at narrow mobile-like size around 390x844. Expected: queued markers remain visible or gracefully reduced; they do not disappear off-canvas or cover the sidebar/controls.",
+    "Compare queued preview count with sidebar queue/left values during a wave. Expected: visual queue and HUD values move in the same direction as onions spawn and are cleared.",
+    "Confirm active arena readability while onions chase and bullets bounce. Expected: arena floor, walls, gates, onions, bullets, player, and Speed Dot/Bolt remain separable in motion.",
+    "Collect Speed Dot/Bolt as Pi-chan. Expected: pickup is visible before collection; BOLT HUD state changes to active/boost timing; player boost feedback is readable without hiding hazards.",
+    "Let an onion approach or collect/contest the Speed Dot when existing behavior allows it. Expected: onion interaction remains readable and does not look like a spawn/collision bug.",
+    "Score at least one onion clear. Expected: OPINION/score changes are legible in the sidebar without needing to search the screen.",
+    "Finish a wave normally. Expected: level advances continuously with toast/HUD feedback; no blocking level overlay interrupts normal progression.",
+    "During level advance, keep Pi-chan away from center. Expected: next wave starts with Pi-chan position preserved or constrained inside the new arena, not silently reset to center.",
+    "Continue through multiple level ups. Expected: LV and NEXT WAVE update every wave; no stale HUD values after wave completion.",
+    "Verify collision deaths. Expected: player death cause is attributable to onion/bullet/contact timing, not hidden by HUD, queue markers, terrain, or toast.",
+    "Use reset. Expected: clean level restart, HUD values reset coherently, no stale queued onion previews.",
+    "Use continue after game over if available. Expected: run resumes coherently, no stale boost/queue/sidebar state.",
+    "Use goto/debug level flow if available. Expected: goto still changes level, overlay/debug UI remains usable, and normal progression still avoids invasive overlay.",
+    "Confirm wave completion semantics. Expected: wave completes only after finite budget is exhausted and no active/dying onions remain.",
+    "Confirm no visual regression in first minute. Expected: presentation reads as MSX/arcade asphalt/terrain, not space/galaxy; effects support playfield reading instead of competing with it."
+  ],
+  "open_questions": [
+    "Before release-level confidence, run a human playthrough focused on replacement spawn, score update, Speed Dot/Bolt pickup, onion contest, full wave completion/level-up, preserved Pi-chan position, and motion readability."
+  ],
+  "artifacts": [
+    ".agents/threads/010-runtime-readability-validation/thread.md",
+    ".agents/threads/010-runtime-readability-validation/state.json",
+    ".agents/threads/010-runtime-readability-validation/log.jsonl"
+  ],
+  "solution_applied": [
+    "No runtime solution was applied. PI-010 completed a no-code runtime/readability validation cycle: first-frame desktop/mobile smoke, scope review, syntax/JSON validations, and extended smoke for reset, goto/debug, natural game over, and continue. Review verdict was APPROVE_WITH_NOTES with residual manual playthrough checks for release-level confidence."
+  ],
+  "decision_log_summary": [
+    "LOG-001: task-orchestrator created validation thread, froze runtime changes, recorded intake validations, and routed to game-designer for no-code runtime/readability classification.",
+    "LOG-002: game-designer completed partial no-code readability validation with no observed FAIL items, no implementation requests, and many interactive checks NOT_TESTED.",
+    "LOG-003: task-orchestrator accepted LOG-002 and routed to review-maintainability-guard as IN_REVIEW for validation coverage review/manual extension, without opening build.",
+    "LOG-004: review-maintainability-guard returned APPROVE_WITH_NOTES, no required rework, and status_proposal DONE.",
+    "LOG-005: task-orchestrator accepted LOG-004 and closed PI-010 as DONE with residual release-confidence notes."
+  ]
+}
