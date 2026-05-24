@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-017",
+  "thread_name": "lan-https-url",
+  "thread_basename": "DONE-review-maintainability-guard-2-task-orchestrator-017-lan-https-url",
+  "title": "print HTTPS LAN URL from dev server",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "tooling",
+  "primary_area": "local-dev-server",
+  "task_level": "L1",
+  "patch_budget": "tiny",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-24 18:03 CEST",
+  "current_status_since": "2026-05-24 18:03 CEST",
+  "last_handoff_at": "2026-05-24 18:03 CEST",
+  "opened_at": "2026-05-24 18:01 CEST",
+  "last_updated_at": "2026-05-24 18:03 CEST",
+  "resolved_at": "2026-05-24 18:03 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-017-lan-https-url.md",
+  "state_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-017-lan-https-url.state.json",
+  "log_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-017-lan-https-url.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-003",
+  "total_execution_minutes": 3,
+  "problem_statement": "Terminal output must include an HTTPS URL usable by other PCs on the same LAN.",
+  "game_flow_context": "local development / LAN device testing",
+  "scope_inputs": [
+    "AGENTS.md",
+    "serve.sh",
+    "README.md"
+  ],
+  "validated_decisions": [
+    "`serve.sh` is HTTPS by default.",
+    "To make LAN URLs usable, the default bind host must be reachable from LAN, not only `localhost`.",
+    "The local certificate must include the detected LAN IP in SAN to avoid an avoidable name mismatch."
+  ],
+  "draft_assumptions_in_play": [
+    "The default-route source IPv4 address is the LAN URL to print.",
+    "Firewall rules are outside repo scope."
+  ],
+  "current_direction": [
+    "Bind default server to `0.0.0.0`.",
+    "Print `Open: https://localhost:<port>`.",
+    "Print `LAN: https://<lan-ip>:<port>` for detected default-route LAN IP.",
+    "Regenerate default local cert when the current LAN IP is missing from SAN."
+  ],
+  "explicit_non_goals": [
+    "No gameplay/runtime changes.",
+    "No firewall/router configuration.",
+    "No production certificate trust automation."
+  ],
+  "approved_impact_surface": [
+    "serve.sh",
+    "README.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-017-lan-https-url.md",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-017-lan-https-url.state.json",
+    ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-017-lan-https-url.log.jsonl"
+  ],
+  "forbidden_files": [
+    "main.js",
+    "js/**",
+    "css/**",
+    "assets/**",
+    "config/**"
+  ],
+  "freeze_zones": [
+    "gameplay runtime",
+    "assets",
+    "CSS",
+    "config"
+  ],
+  "backward_compatibility_concerns": [
+    "Default bind host changed from loopback to all interfaces.",
+    "LAN access may still be blocked by OS firewall outside repo control."
+  ],
+  "required_validations": [
+    "bash -n serve.sh",
+    "HTTPS localhost curl smoke test",
+    "HTTPS LAN IP curl smoke test",
+    "Certificate SAN inspection"
+  ],
+  "human_test_checklist": [
+    "Restart `./serve.sh`.",
+    "Use the printed `LAN:` URL from another device on the same Wi-Fi/LAN.",
+    "Accept local self-signed certificate warning if prompted."
+  ],
+  "open_questions": [],
+  "artifacts": [
+    "serve.sh",
+    "README.md"
+  ],
+  "solution_applied": [
+    "`serve.sh` now binds to `0.0.0.0` by default.",
+    "Terminal output prints local `Open:` URL and one or more LAN URLs.",
+    "Default dev certificate SAN includes the detected LAN IP.",
+    "README documents the LAN URL output."
+  ],
+  "decision_log_summary": [
+    "Task-orchestrator approved direct build because this is local tooling only.",
+    "Build-agent implemented LAN URL printing, all-interface bind, and LAN IP cert SAN refresh.",
+    "Review-maintainability-guard approved with expected notes around firewall and self-signed browser warnings.",
+    "Task-orchestrator closed DONE."
+  ]
+}

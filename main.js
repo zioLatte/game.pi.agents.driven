@@ -53,9 +53,14 @@ const runHudScoreEl = document.getElementById("run-hud-score");
 const runHudLevelEl = document.getElementById("run-hud-level");
 const runHudLivesEl = document.getElementById("run-hud-lives");
 const hudRestartBtn = document.getElementById("hud-restart");
+const hudCalibrateMotionBtn = document.getElementById("hud-calibrate-motion");
 const levelToastEl = document.getElementById("level-toast");
 const touchControlsEl = document.getElementById("touch-controls");
 const touchFireBtnEl = document.getElementById("touch-fire");
+const motionCalibrationOverlay = document.getElementById("motion-calibration-overlay");
+const motionCalibrationStatusEl = document.getElementById("motion-calibration-status");
+const motionCalibrationOkBtn = document.getElementById("motion-calibration-ok");
+const motionCalibrationRetryBtn = document.getElementById("motion-calibration-retry");
 const LEVEL_START_DELAY_MS = 1400;
 const LEVEL_TOAST_DURATION_MS = 1300;
 const LEVELUP_SFX_FADE_DELAY_MS = 900;
@@ -64,6 +69,23 @@ const MAX_CONTINUES = 3;
 const PLAYER_DEFEATED_STANDBY_MS = 2000;
 const PLAYER_REVIVE_GRACE_MS = 1200;
 const MOBILE_MOTION_REQUIRED_MESSAGE = "Questo smartphone non espone il giroscopio richiesto. Il gioco non e' disponibile da smartphone.";
+const MOTION_CALIBRATION_STEPS = [
+  {
+    title: "Destra / Sinistra",
+    instructions: "Inclina il telefono a destra e sinistra",
+    status: "Premi OK quando PiChan si muove nel verso giusto"
+  },
+  {
+    title: "Su / Giu",
+    instructions: "Inclina il telefono in alto e in basso",
+    status: "Premi OK quando PiChan si muove nel verso giusto"
+  },
+  {
+    title: "Prova completa",
+    instructions: "Prova tutte le direzioni",
+    status: "Premi OK quando il controllo ti sembra corretto"
+  }
+];
 let levelOverlayTimeoutId = null;
 let levelToastTimeoutId = null;
 let levelupSfxFadeTimeoutId = null;
@@ -85,6 +107,15 @@ let levelOnionPreloadDone = false;
 let levelOverlayPending = false;
 let assetsLoaded = false;
 let startPending = false;
+let motionCalibrationInProgress = false;
+let motionCalibrationWasRestart = false;
+let motionCalibrationSessionReady = false;
+let motionCalibrationCompletionMode = "start";
+let motionCalibrationStepIndex = -1;
+let motionCalibrationPreviewRaf = 0;
+let motionCalibrationPreviewLastAt = 0;
+let motionCalibrationPlayerStart = null;
+let engine = null;
 let levelOnionAnimHandler = null;
 let levelOnionDirection = 1;
 let pendingGameStart = true;
@@ -284,6 +315,10 @@ function hasMobileMotionApi() {
 function showMobileMotionUnavailable() {
   mobileMotionUnavailable = true;
   window.PICHAN_MOBILE_UNAVAILABLE = true;
+  motionCalibrationInProgress = false;
+  motionCalibrationSessionReady = false;
+  stopMotionCalibrationPreview({ restorePlayer: true });
+  hideMotionCalibrationOverlay();
   document.body.classList.add("is-mobile-unavailable");
   if (mobileWarningEl) {
     mobileWarningEl.textContent = MOBILE_MOTION_REQUIRED_MESSAGE;
@@ -381,32 +416,264 @@ function startFromArenaPlay(event) {
   if (!awaitingArenaStartClick) return;
   const wasRestart = arenaStartMode === "restart";
   if (motionTouchEnabled) {
-    if (mobileMotionUnavailable || !hasMobileMotionApi()) {
-      showMobileMotionUnavailable();
-      return;
-    }
-    input.requestMotionPermission?.()
-      .then((motionGranted) => {
-        if (!motionGranted) {
-          showMobileMotionUnavailable();
-          return;
-        }
-        return input.waitForMotionSignal?.(1500);
-      })
-      .then((motionReady) => {
-        if (motionReady !== true) {
-          showMobileMotionUnavailable();
-          return;
-        }
-        completeArenaStart(wasRestart);
-      })
-      .catch(() => showMobileMotionUnavailable());
+    beginMobileMotionStart(wasRestart);
     return;
   }
   completeArenaStart(wasRestart);
 }
 
+function beginMobileMotionStart(wasRestart) {
+  if (motionCalibrationInProgress) return;
+  if (mobileMotionUnavailable || !hasMobileMotionApi()) {
+    showMobileMotionUnavailable();
+    return;
+  }
+
+  motionCalibrationWasRestart = Boolean(wasRestart);
+  motionCalibrationInProgress = true;
+  input.requestMotionPermission?.()
+    .then((motionGranted) => {
+      if (!motionGranted) {
+        showMobileMotionUnavailable();
+        return false;
+      }
+      return input.waitForMotionSignal?.(1500);
+    })
+    .then((motionReady) => {
+      if (motionReady !== true) {
+        showMobileMotionUnavailable();
+        return;
+      }
+      if (motionCalibrationSessionReady) {
+        completeArenaStart(motionCalibrationWasRestart);
+        return;
+      }
+      runMotionCalibration({
+        wasRestart: motionCalibrationWasRestart,
+        completionMode: "start"
+      });
+    })
+    .catch(() => showMobileMotionUnavailable())
+    .finally(() => {
+      if (!motionCalibrationOverlay?.classList.contains("visible")) {
+        motionCalibrationInProgress = false;
+      }
+    });
+}
+
+function runMotionCalibration({ wasRestart = motionCalibrationWasRestart, completionMode = "start" } = {}) {
+  if (motionCalibrationInProgress && motionCalibrationOverlay?.classList.contains("visible")) return;
+
+  motionCalibrationWasRestart = Boolean(wasRestart);
+  motionCalibrationCompletionMode = completionMode;
+  motionCalibrationStepIndex = -1;
+  motionCalibrationInProgress = true;
+  motionCalibrationSessionReady = false;
+  engine?.stop?.();
+  stopMotionCalibrationPreview({ restorePlayer: true });
+  setArenaStartVisible(false);
+  showMotionCalibrationOverlay("baseline");
+
+  input.calibrateMotion?.()
+    .then((result) => {
+      if (result?.ok) {
+        beginMotionCalibrationStep(0);
+        return;
+      }
+
+      motionCalibrationInProgress = false;
+      const reason = result?.reason === "unstable" ? "unstable" : "failed";
+      showMotionCalibrationOverlay(reason);
+    })
+    .catch(() => {
+      motionCalibrationInProgress = false;
+      showMotionCalibrationOverlay("failed");
+    });
+}
+
+function beginMotionCalibrationStep(index) {
+  motionCalibrationStepIndex = index;
+  startMotionCalibrationPreview();
+  showMotionCalibrationOverlay("guided");
+}
+
+function advanceMotionCalibrationStep() {
+  if (!motionCalibrationInProgress || motionCalibrationStepIndex < 0) return;
+  const nextIndex = motionCalibrationStepIndex + 1;
+  if (nextIndex < MOTION_CALIBRATION_STEPS.length) {
+    beginMotionCalibrationStep(nextIndex);
+    return;
+  }
+  finishGuidedMotionCalibration();
+}
+
+function finishGuidedMotionCalibration() {
+  motionCalibrationSessionReady = true;
+  motionCalibrationInProgress = false;
+  stopMotionCalibrationPreview({ restorePlayer: true });
+  showMotionCalibrationOverlay("ready");
+  hideMotionCalibrationOverlay();
+
+  if (motionCalibrationCompletionMode === "resume") {
+    startEngineIfReady();
+    return;
+  }
+
+  if (motionCalibrationCompletionMode === "stay") {
+    awaitingArenaStartClick = true;
+    window.PICHAN_WAIT_FOR_ARENA_PLAY = true;
+    setArenaStartVisible(true);
+    if (assetsLoaded) {
+      drawArenaStartPreview();
+    }
+    return;
+  }
+
+  completeArenaStart(motionCalibrationWasRestart);
+}
+
+function showMotionCalibrationOverlay(status = "baseline") {
+  if (!motionCalibrationOverlay) return;
+  const failed = status === "unstable" || status === "failed";
+  const ready = status === "ready";
+  const guided = status === "guided";
+  const step = MOTION_CALIBRATION_STEPS[motionCalibrationStepIndex] || null;
+  const titleEl = document.getElementById("motion-calibration-title");
+  const instructionsEl = document.getElementById("motion-calibration-instructions");
+  if (titleEl) {
+    titleEl.textContent = guided && step
+      ? `Calibrazione ${motionCalibrationStepIndex + 1}/3`
+      : "Calibrazione";
+  }
+  if (instructionsEl) {
+    instructionsEl.textContent = guided && step
+      ? `${step.title}: ${step.instructions}`
+      : "Tieni il telefono nella posizione comoda di gioco";
+  }
+  if (motionCalibrationStatusEl) {
+    if (status === "unstable") {
+      motionCalibrationStatusEl.textContent = "Tieni il telefono piu' fermo";
+    } else if (ready) {
+      motionCalibrationStatusEl.textContent = "Pronto";
+    } else if (status === "failed") {
+      motionCalibrationStatusEl.textContent = "Calibrazione non riuscita";
+    } else if (guided && step) {
+      motionCalibrationStatusEl.textContent = step.status;
+    } else {
+      motionCalibrationStatusEl.textContent = "Calibrazione...";
+    }
+  }
+  if (motionCalibrationOkBtn) {
+    motionCalibrationOkBtn.hidden = !guided;
+  }
+  if (motionCalibrationRetryBtn) {
+    motionCalibrationRetryBtn.hidden = !failed;
+  }
+  motionCalibrationOverlay.classList.toggle("is-failed", failed);
+  motionCalibrationOverlay.classList.toggle("is-ready", ready);
+  motionCalibrationOverlay.classList.toggle("is-guided", guided);
+  motionCalibrationOverlay.classList.add("visible");
+  motionCalibrationOverlay.setAttribute("aria-hidden", "false");
+}
+
+function hideMotionCalibrationOverlay() {
+  if (!motionCalibrationOverlay) return;
+  motionCalibrationOverlay.classList.remove("visible", "is-failed", "is-ready", "is-guided");
+  motionCalibrationOverlay.setAttribute("aria-hidden", "true");
+  if (motionCalibrationOkBtn) {
+    motionCalibrationOkBtn.hidden = true;
+  }
+  if (motionCalibrationRetryBtn) {
+    motionCalibrationRetryBtn.hidden = true;
+  }
+}
+
+function startMotionCalibrationPreview() {
+  if (motionCalibrationPreviewRaf || !player) return;
+  motionCalibrationPlayerStart = { x: player.x, y: player.y };
+  motionCalibrationPreviewLastAt = performance.now();
+  const step = (now) => {
+    if (!motionCalibrationInProgress || motionCalibrationStepIndex < 0) {
+      motionCalibrationPreviewRaf = 0;
+      return;
+    }
+
+    const dt = Math.min(0.033, Math.max(0, (now - motionCalibrationPreviewLastAt) / 1000));
+    motionCalibrationPreviewLastAt = now;
+    input.beginFrame();
+    player.update(dt, input, now);
+    input.endFrame();
+    draw(now);
+    motionCalibrationPreviewRaf = requestAnimationFrame(step);
+  };
+  motionCalibrationPreviewRaf = requestAnimationFrame(step);
+}
+
+function stopMotionCalibrationPreview({ restorePlayer = false } = {}) {
+  if (motionCalibrationPreviewRaf) {
+    cancelAnimationFrame(motionCalibrationPreviewRaf);
+    motionCalibrationPreviewRaf = 0;
+  }
+  if (restorePlayer && motionCalibrationPlayerStart && player) {
+    player.x = motionCalibrationPlayerStart.x;
+    player.y = motionCalibrationPlayerStart.y;
+    draw(performance.now());
+  }
+  motionCalibrationPlayerStart = null;
+  motionCalibrationPreviewLastAt = 0;
+  input.clearShoot?.();
+}
+
+function handleMotionOrientationChange() {
+  if (!motionTouchEnabled || mobileMotionUnavailable) return;
+
+  motionCalibrationInProgress = false;
+  motionCalibrationSessionReady = false;
+  stopMotionCalibrationPreview({ restorePlayer: true });
+  input.resetMotionCalibration?.({ requireCalibration: true });
+  engine?.stop?.();
+  hideMotionCalibrationOverlay();
+  awaitingArenaStartClick = true;
+  arenaStartMode = "initial";
+  window.PICHAN_WAIT_FOR_ARENA_PLAY = true;
+  setArenaStartVisible(true);
+  if (assetsLoaded) {
+    drawArenaStartPreview();
+  }
+}
+
+function beginHudMotionRecalibration() {
+  if (!motionTouchEnabled || mobileMotionUnavailable || motionCalibrationInProgress) return;
+  if (!hasMobileMotionApi()) {
+    showMobileMotionUnavailable();
+    return;
+  }
+
+  const shouldResume = Boolean(engine?.running) && !isOverlayActive();
+  engine?.stop?.();
+  input.requestMotionPermission?.()
+    .then((motionGranted) => {
+      if (!motionGranted) {
+        showMobileMotionUnavailable();
+        return false;
+      }
+      return input.waitForMotionSignal?.(1500);
+    })
+    .then((motionReady) => {
+      if (motionReady !== true) {
+        showMobileMotionUnavailable();
+        return;
+      }
+      runMotionCalibration({
+        wasRestart: false,
+        completionMode: shouldResume ? "resume" : "stay"
+      });
+    })
+    .catch(() => showMobileMotionUnavailable());
+}
+
 function completeArenaStart(wasRestart) {
+  hideMotionCalibrationOverlay();
   awaitingArenaStartClick = false;
   arenaStartMode = "hidden";
   window.PICHAN_WAIT_FOR_ARENA_PLAY = false;
@@ -683,7 +950,8 @@ const input = new Input({
   fireBtnEl: touchEnabled && !motionTouchEnabled ? touchFireBtnEl : null,
   motionEnabled: motionTouchEnabled,
   touchShootSurfaceEl: motionTouchEnabled ? document : null,
-  ignoreTouchShootSelector: "#arena-start-button, button, input, textarea, select, a"
+  ignoreTouchShootSelector: "#arena-start-button, #motion-calibration-overlay, button, input, textarea, select, a",
+  onMotionOrientationChange: handleMotionOrientationChange
 });
 const levelConfigResponse = await fetch(withAssetVersion("./config/levels.json"));
 const levelConfig = await levelConfigResponse.json();
@@ -1941,7 +2209,7 @@ function createPerfProfiler() {
 // ==========================================================
 const perfProfiler = createPerfProfiler();
 window.PICHAN_PERF_PROFILER = perfProfiler;
-const engine = new Engine(update, draw, {
+engine = new Engine(update, draw, {
   frameObserver: perfProfiler ? (metrics) => perfProfiler.record(metrics) : null
 });
 const lifecycle = createLifecycle({
@@ -2027,6 +2295,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("pointerdown", (event) => {
+  if (motionCalibrationOverlay?.contains(event.target)) return;
   if (awaitingArenaStartClick && touchEnabled && event.pointerType === "touch") {
     startFromArenaPlay(event);
     return;
@@ -2043,11 +2312,38 @@ if (arenaStartBtn) {
   arenaStartBtn.addEventListener("click", startFromArenaPlay);
 }
 
+if (motionCalibrationRetryBtn) {
+  motionCalibrationRetryBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    runMotionCalibration({
+      wasRestart: motionCalibrationWasRestart,
+      completionMode: motionCalibrationCompletionMode
+    });
+  });
+}
+
+if (motionCalibrationOkBtn) {
+  motionCalibrationOkBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    advanceMotionCalibrationStep();
+  });
+}
+
 if (hudRestartBtn) {
   hudRestartBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
     window.location.reload();
+  });
+}
+
+if (hudCalibrateMotionBtn) {
+  hudCalibrateMotionBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    beginHudMotionRecalibration();
   });
 }
 

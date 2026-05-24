@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-014",
+  "thread_name": "mobile-gyro-delta-control",
+  "thread_basename": "DONE-review-maintainability-guard-2-task-orchestrator-014-mobile-gyro-delta-control",
+  "title": "mobile gyro movement must use delta input",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "input",
+  "task_level": "L1",
+  "patch_budget": "tiny",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-24 17:36 CEST",
+  "current_status_since": "2026-05-24 17:36 CEST",
+  "last_handoff_at": "2026-05-24 17:36 CEST",
+  "opened_at": "2026-05-24 17:31 CEST",
+  "last_updated_at": "2026-05-24 17:36 CEST",
+  "resolved_at": "2026-05-24 17:36 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-014-mobile-gyro-delta-control.md",
+  "state_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-014-mobile-gyro-delta-control.state.json",
+  "log_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-014-mobile-gyro-delta-control.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-005",
+  "total_execution_minutes": 5,
+  "problem_statement": "Mobile motion movement currently maps absolute device tilt to player movement; requested behavior is relative delta motion, comparable to mouse movement.",
+  "game_flow_context": "movement / mobile controls / player readability",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    "js/core/Input.js"
+  ],
+  "validated_decisions": [
+    "`js/core/Input.js` is the only runtime module that reads `DeviceOrientationEvent`.",
+    "Existing motion control uses absolute `gamma` and `beta` values.",
+    "Requested behavior is delta/relative motion, not absolute tilt."
+  ],
+  "draft_assumptions_in_play": [
+    "Keyboard, desktop, shooting, wave, onion, arena, HUD, audio, and asset behavior must remain unchanged.",
+    "Manual mobile browser validation is required for final confidence because desktop checks cannot emit real device orientation data."
+  ],
+  "current_direction": [
+    "Convert mobile motion handling to compute deltas between consecutive screen-adjusted orientation samples.",
+    "Establish baseline on first valid sample without moving the player.",
+    "Reset the motion baseline when screen orientation changes or motion is cleared.",
+    "Keep patch local to input handling."
+  ],
+  "explicit_non_goals": [
+    "No player movement speed redesign.",
+    "No keyboard or touch shoot changes.",
+    "No UI/HUD changes.",
+    "No wave, onion, arena, audio, asset, or CSS changes.",
+    "No new mobile calibration UI."
+  ],
+  "approved_impact_surface": [
+    "js/core/Input.js",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-014-mobile-gyro-delta-control.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-014-mobile-gyro-delta-control.state.json",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-014-mobile-gyro-delta-control.log.jsonl"
+  ],
+  "forbidden_files": [
+    "main.js",
+    "js/entities/Player.js",
+    "js/core/LevelManager.js",
+    "js/core/Arena.js",
+    "css/game.css",
+    "assets/**",
+    "docs/**"
+  ],
+  "freeze_zones": [
+    "waves",
+    "arena",
+    "HUD",
+    "audio",
+    "assets",
+    "desktop keyboard movement"
+  ],
+  "backward_compatibility_concerns": [
+    "Relative motion must not break desktop keyboard controls.",
+    "First motion sample must not produce a jump."
+  ],
+  "required_validations": [
+    "node --input-type=module --check < js/core/Input.js",
+    "Manual mobile/browser checklist documented in build report."
+  ],
+  "human_test_checklist": [
+    "On mobile, enabling motion while the phone is already tilted must not immediately move the player.",
+    "Slowly rotating the phone right/left/up/down must move the player only while rotation changes.",
+    "Holding the phone steady after a rotation must stop motion instead of continuing drift from absolute tilt.",
+    "Rotating the screen orientation must not produce a large jump.",
+    "Desktop keyboard movement and shooting still work."
+  ],
+  "open_questions": [],
+  "artifacts": [
+    "js/core/Input.js"
+  ],
+  "solution_applied": [
+    "Changed mobile motion input from absolute tilt to delta-based input in `js/core/Input.js`.",
+    "Added per-frame pending delta consumption so gyro motion stops when the phone is steady.",
+    "Added baseline reset on first sensor sample, motion clear, and screen-orientation change."
+  ],
+  "decision_log_summary": [
+    "Task-orchestrator approved direct build because scope is L1, single runtime input file, requested behavior is explicit, and impact-regression-guard is skipped with low risk and explicit freeze zones.",
+    "Build-agent implemented delta motion input and validations.",
+    "Review-maintainability-guard returned APPROVE_WITH_NOTES; mobile hardware tuning remains a manual residual check.",
+    "Task-orchestrator closed DONE."
+  ]
+}

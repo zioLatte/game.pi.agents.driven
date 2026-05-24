@@ -5,23 +5,26 @@ Gioco arcade 2D in stile retro. Pi-Chan si muove nello schermo, spara proiettili
 Questa guida e' pensata per dare a Codex il quadro completo: dove sta la logica, come fluisce il game loop, quali sono le dipendenze tra moduli e quali parti sono legacy o non integrate.
 
 ## Avvio rapido
-1) Server locale (HTTP):
+1) Server locale (HTTPS di default):
 ```bash
 ./serve.sh
 ```
-Poi apri `http://127.0.0.1:8080`.
+Poi apri il link stampato a terminale, normalmente `https://localhost:8443`.
+Lo script stampa anche uno o piu' link `LAN: https://<ip-lan>:8443` per aprire il gioco da altri dispositivi sulla stessa rete.
+Se `dev-cert.pem` e `dev-key.pem` non esistono o non hanno SAN per localhost, lo script li genera con OpenSSL.
+Il browser puo' mostrare un warning per il certificato self-signed: accettalo solo in sviluppo locale.
 
-2) In alternativa (stesso risultato):
+2) HTTP esplicito, solo se non ti serve secure context:
+```bash
+./serve.sh --http
+```
+Poi apri il link stampato a terminale, normalmente `http://localhost:8080`.
+
+3) In alternativa HTTP senza script:
 ```bash
 python3 -m http.server 8080
 ```
 Poi apri `http://localhost:8080`.
-
-3) HTTPS locale (opzionale, solo se ti serve testare in secure context):
-```bash
-TLS_CERT=/percorso/cert.pem TLS_KEY=/percorso/key.pem ./serve.sh --https --port 8443
-```
-Poi apri `https://127.0.0.1:8443`.
 
 Nota: l'audio WebAudio/BGM parte solo dopo un gesto utente (click o tasto).
 Nota: `index.html` espone `window.BUILD_VERSION`, usata da `js/loader.js` per versionare `main.js`, i moduli preload, il CSS e gli audio senza usare `Date.now()`.

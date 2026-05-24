@@ -43,6 +43,15 @@
   <div id="mobile-warning" role="dialog" aria-modal="true">
     Apri questo gioco da un PC.
   </div>
+  <div id="motion-calibration-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div id="motion-calibration-box">
+      <div id="motion-calibration-title">Calibrazione</div>
+      <div id="motion-calibration-instructions">Tieni il telefono nella posizione comoda di gioco</div>
+      <div id="motion-calibration-status" role="status" aria-live="polite">Calibrazione...</div>
+      <button id="motion-calibration-ok" type="button" hidden>OK</button>
+      <button id="motion-calibration-retry" type="button" hidden>Riprova</button>
+    </div>
+  </div>
   <div id="level-overlay" role="dialog" aria-modal="true">
     <div id="level-box">
       <div id="level-title">Level 1</div>
@@ -118,6 +127,9 @@
 
       <button id="hud-restart" class="run-hud__restart" type="button" aria-label="Restart">
         <img class="run-hud__icon" src="assets/collage/restart.png" alt="">
+      </button>
+      <button id="hud-calibrate-motion" class="run-hud__calibrate" type="button" aria-label="Ricalibra motion">
+        <img class="run-hud__icon" src="assets/collage/pickup_power.png" alt="">
       </button>
     </aside>
   </div>

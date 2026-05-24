@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-015",
+  "thread_name": "localhost-https-dev-server",
+  "thread_basename": "DONE-review-maintainability-guard-2-task-orchestrator-015-localhost-https-dev-server",
+  "title": "make localhost HTTPS easy for local testing",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "tooling",
+  "primary_area": "local-dev-server",
+  "task_level": "L1",
+  "patch_budget": "tiny",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-24 17:47 CEST",
+  "current_status_since": "2026-05-24 17:47 CEST",
+  "last_handoff_at": "2026-05-24 17:47 CEST",
+  "opened_at": "2026-05-24 17:42 CEST",
+  "last_updated_at": "2026-05-24 17:47 CEST",
+  "resolved_at": "2026-05-24 17:47 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-015-localhost-https-dev-server.md",
+  "state_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-015-localhost-https-dev-server.state.json",
+  "log_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-015-localhost-https-dev-server.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-005",
+  "total_execution_minutes": 5,
+  "problem_statement": "Local HTTPS is documented but requires manual TLS env vars; user wants to use localhost over HTTPS.",
+  "game_flow_context": "local development / mobile secure-context testing",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    "serve.sh",
+    "https_server.py",
+    "README.md"
+  ],
+  "validated_decisions": [
+    "`serve.sh` already has HTTP and HTTPS modes.",
+    "`serve.sh --https` currently requires explicit `TLS_CERT` and `TLS_KEY`.",
+    "`dev-cert.pem` and `dev-key.pem` are ignored by `.gitignore`.",
+    "`https_server.py` is tracked but points to `cert.pem`, which is not the current local cert naming."
+  ],
+  "draft_assumptions_in_play": [
+    "Local self-signed certificates are acceptable for development.",
+    "Runtime game files must not change.",
+    "The generated cert/key must remain untracked."
+  ],
+  "current_direction": [
+    "Make `./serve.sh --https` work with default local cert paths.",
+    "Generate a self-signed localhost certificate automatically when missing and `openssl` is available.",
+    "Keep HTTPS serving dependency-free beyond Python and OpenSSL.",
+    "Align `https_server.py` with the same local certificate files."
+  ],
+  "explicit_non_goals": [
+    "No gameplay/runtime code changes.",
+    "No dependency manager or package.json introduction.",
+    "No committed TLS private key or certificate.",
+    "No production HTTPS deployment."
+  ],
+  "approved_impact_surface": [
+    "serve.sh",
+    "https_server.py",
+    "README.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-015-localhost-https-dev-server.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-015-localhost-https-dev-server.state.json",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-015-localhost-https-dev-server.log.jsonl"
+  ],
+  "forbidden_files": [
+    "main.js",
+    "js/**",
+    "css/**",
+    "assets/**",
+    "config/**",
+    "package.json"
+  ],
+  "freeze_zones": [
+    "gameplay runtime",
+    "assets",
+    "CSS",
+    "config"
+  ],
+  "backward_compatibility_concerns": [
+    "Existing HTTP mode must keep working.",
+    "Existing explicit TLS_CERT/TLS_KEY usage must keep working."
+  ],
+  "required_validations": [
+    "bash -n serve.sh",
+    "python3 -m py_compile https_server.py",
+    "Start HTTPS server locally and verify an HTTPS response.",
+    "JSON parse for thread state/log files."
+  ],
+  "human_test_checklist": [
+    "Run `./serve.sh --https`.",
+    "Open `https://localhost:8443` or the printed URL.",
+    "Accept the self-signed certificate warning if the browser prompts.",
+    "Confirm the game loads."
+  ],
+  "open_questions": [],
+  "artifacts": [
+    "serve.sh",
+    "https_server.py",
+    "README.md"
+  ],
+  "solution_applied": [
+    "`./serve.sh --https` now serves HTTPS localhost with default local cert files.",
+    "Default local certificates are generated or refreshed when missing SAN for localhost.",
+    "`https_server.py` now uses the same local certificate defaults and supports `HOST`/`PORT` overrides.",
+    "README documents the one-command HTTPS workflow."
+  ],
+  "decision_log_summary": [
+    "Task-orchestrator approved direct build because scope is local tooling only, with no gameplay files touched.",
+    "Build-agent implemented local HTTPS tooling and validations.",
+    "Review-maintainability-guard returned APPROVE_WITH_NOTES; browser self-signed warning remains expected manual step.",
+    "Task-orchestrator closed DONE."
+  ]
+}

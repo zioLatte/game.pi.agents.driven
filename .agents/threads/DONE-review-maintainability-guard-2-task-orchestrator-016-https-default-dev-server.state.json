@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-016",
+  "thread_name": "https-default-dev-server",
+  "thread_basename": "DONE-review-maintainability-guard-2-task-orchestrator-016-https-default-dev-server",
+  "title": "make local dev server default to HTTPS and print launch URL",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "tooling",
+  "primary_area": "local-dev-server",
+  "task_level": "L1",
+  "patch_budget": "tiny",
+  "status": "DONE",
+  "current_owner": "task-orchestrator",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-24 17:58 CEST",
+  "current_status_since": "2026-05-24 17:58 CEST",
+  "last_handoff_at": "2026-05-24 17:58 CEST",
+  "opened_at": "2026-05-24 17:55 CEST",
+  "last_updated_at": "2026-05-24 17:58 CEST",
+  "resolved_at": "2026-05-24 17:58 CEST",
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-016-https-default-dev-server.md",
+  "state_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-016-https-default-dev-server.state.json",
+  "log_file": ".agents/threads/DONE-review-maintainability-guard-2-task-orchestrator-016-https-default-dev-server.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-004",
+  "total_execution_minutes": 3,
+  "problem_statement": "User wants `serve.sh` to default to HTTPS and show the terminal link to open.",
+  "game_flow_context": "local development / secure-context mobile testing",
+  "scope_inputs": [
+    "AGENTS.md",
+    "serve.sh",
+    "README.md"
+  ],
+  "validated_decisions": [
+    "`serve.sh` already supports HTTPS with local cert generation from the previous task.",
+    "Current default mode is still HTTP.",
+    "The requested behavior is tooling-only."
+  ],
+  "draft_assumptions_in_play": [
+    "`./serve.sh` should launch HTTPS on `https://localhost:8443`.",
+    "`./serve.sh --http` should remain available for explicit HTTP."
+  ],
+  "current_direction": [
+    "Change default mode to HTTPS.",
+    "Add explicit `--http` mode.",
+    "Print an `Open: <url>` line after server start.",
+    "Update README quickstart to match."
+  ],
+  "explicit_non_goals": [
+    "No gameplay/runtime changes.",
+    "No cert trust automation.",
+    "No production HTTPS setup."
+  ],
+  "approved_impact_surface": [
+    "serve.sh",
+    "README.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-016-https-default-dev-server.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-016-https-default-dev-server.state.json",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-016-https-default-dev-server.log.jsonl"
+  ],
+  "forbidden_files": [
+    "main.js",
+    "js/**",
+    "css/**",
+    "assets/**",
+    "config/**"
+  ],
+  "freeze_zones": [
+    "gameplay runtime",
+    "assets",
+    "CSS",
+    "config"
+  ],
+  "backward_compatibility_concerns": [
+    "HTTP should remain available through explicit `--http`.",
+    "Port overrides should continue to work."
+  ],
+  "required_validations": [
+    "bash -n serve.sh",
+    "Start `./serve.sh` and verify HTTPS response.",
+    "Start `./serve.sh --http --port <port>` and verify HTTP response.",
+    "JSON parse for thread files."
+  ],
+  "human_test_checklist": [
+    "Run `./serve.sh`.",
+    "Open the printed `Open: https://localhost:8443` URL.",
+    "Accept local self-signed certificate warning if prompted."
+  ],
+  "open_questions": [],
+  "artifacts": [
+    "serve.sh",
+    "README.md"
+  ],
+  "solution_applied": [
+    "`./serve.sh` now defaults to HTTPS on `https://localhost:8443`.",
+    "Server startup prints `Open: <url>` using the actual scheme, host, and port.",
+    "`./serve.sh --http` remains available for explicit HTTP mode.",
+    "README quickstart now documents HTTPS as the default."
+  ],
+  "decision_log_summary": [
+    "Task-orchestrator approved direct build because this is local tooling only and no gameplay files are in scope.",
+    "Build-agent implemented HTTPS default and terminal URL printing.",
+    "Review-maintainability-guard returned APPROVE_WITH_NOTES with no required rework.",
+    "Task-orchestrator closed DONE."
+  ]
+}

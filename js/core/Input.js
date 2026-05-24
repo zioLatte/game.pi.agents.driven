@@ -16,8 +16,17 @@
 // NOTE
 // ----------------------------------------------------------
 // • SPARA su mobile è solo tap (shootPressed), nessun autofire.
-// • Motion produce un asse analogico normalizzato con deadzone.
+// • Motion usa trigger delta con direzione persistente, non tilt assoluto.
 //
+
+const MOTION_TRIGGER_THRESHOLD_DEG = 6;
+const MOTION_NEUTRAL_DEADZONE_DEG = 4;
+const MOTION_NEUTRAL_HOLD_MS = 180;
+const MOTION_MIN_TRIGGER_INTERVAL_MS = 120;
+const MOTION_CALIBRATION_DURATION_MS = 1000;
+const MOTION_CALIBRATION_MIN_SAMPLES = 12;
+const MOTION_CALIBRATION_MAX_DRIFT_DEG = 5;
+const MOTION_CALIBRATION_TIMEOUT_MS = 2500;
 
 export class Input {
   constructor(options = {}) {
@@ -25,13 +34,26 @@ export class Input {
       fireBtnEl = null,
       motionEnabled = false,
       touchShootSurfaceEl = null,
-      ignoreTouchShootSelector = ""
+      ignoreTouchShootSelector = "",
+      onMotionOrientationChange = null
     } = options;
 
     // Stato sorgenti separate (merge con OR)
     this._kb = { up: false, down: false, left: false, right: false, shoot: false };
     this._touch = { up: false, down: false, left: false, right: false };
-    this._motion = { dx: 0, dy: 0, active: false };
+    this._motion = {
+      enabled: Boolean(motionEnabled),
+      active: false,
+      baseline: null,
+      lastSample: null,
+      latchedDirection: "idle",
+      neutralSince: null,
+      lastTriggerAt: -MOTION_MIN_TRIGGER_INTERVAL_MS,
+      calibrationRequired: false,
+      dx: 0,
+      dy: 0
+    };
+    this._motionCalibration = null;
 
     // Touch internals
     this._fireBtnEl = fireBtnEl;
@@ -47,6 +69,8 @@ export class Input {
     this._motionListening = false;
     this._motionSignalSeen = false;
     this._motionSignalWaiters = [];
+    this._onMotionOrientationChange =
+      typeof onMotionOrientationChange === "function" ? onMotionOrientationChange : null;
 
     // Tastiera
     window.addEventListener("keydown", (e) => this.#onKeyDown(e));
@@ -63,6 +87,7 @@ export class Input {
     // shootPressed è edge-trigger: valido solo per 1 frame
     this._shootPressedFrame = this._shootTapQueued;
     this._shootTapQueued = false;
+    this.#settleMotionNeutralHold();
     this.#mergeState();
   }
 
@@ -86,6 +111,62 @@ export class Input {
     this._shootPressedFrame = false;
   }
 
+  calibrateMotion(options = {}) {
+    if (!this._motionEnabled || typeof window === "undefined") {
+      return Promise.resolve({ ok: false, reason: "unsupported" });
+    }
+    if (!this._motionListening) {
+      return Promise.resolve({ ok: false, reason: "unsupported" });
+    }
+    if (this._motionCalibration?.active) {
+      return this._motionCalibration.promise;
+    }
+
+    const durationMs = Math.max(0, Number(options.durationMs) || MOTION_CALIBRATION_DURATION_MS);
+    const minSamples = Math.max(1, Math.floor(Number(options.minSamples) || MOTION_CALIBRATION_MIN_SAMPLES));
+    const maxDriftDeg = Math.max(0, Number(options.maxDriftDeg) || MOTION_CALIBRATION_MAX_DRIFT_DEG);
+    const timeoutMs = Math.max(durationMs, Number(options.timeoutMs) || MOTION_CALIBRATION_TIMEOUT_MS);
+    const startedAt = this.#now();
+
+    this.#clearMotion();
+    this._motion.calibrationRequired = true;
+
+    let resolveCalibration = null;
+    const promise = new Promise((resolve) => {
+      resolveCalibration = resolve;
+    });
+
+    const calibration = {
+      active: true,
+      samples: [],
+      angle: null,
+      startedAt,
+      durationMs,
+      minSamples,
+      maxDriftDeg,
+      timeoutId: null,
+      durationId: null,
+      resolve: resolveCalibration,
+      promise
+    };
+
+    calibration.durationId = setTimeout(() => {
+      this.#tryFinishMotionCalibration();
+    }, durationMs);
+    calibration.timeoutId = setTimeout(() => {
+      this.#finishMotionCalibration({ ok: false, reason: "timeout" });
+    }, timeoutMs);
+
+    this._motionCalibration = calibration;
+    return promise;
+  }
+
+  resetMotionCalibration({ requireCalibration = false } = {}) {
+    this.#cancelMotionCalibration();
+    this.#clearMotion();
+    this._motion.calibrationRequired = Boolean(requireCalibration);
+  }
+
   requestMotionPermission() {
     if (!this._motionEnabled || typeof window === "undefined") return Promise.resolve(false);
     if (!("DeviceOrientationEvent" in window)) return Promise.resolve(false);
@@ -105,7 +186,10 @@ export class Input {
         this.#clearMotion();
         return false;
       })
-      .catch(() => false);
+      .catch(() => {
+        this.#clearMotion();
+        return false;
+      });
   }
 
   waitForMotionSignal(timeoutMs = 1500) {
@@ -253,9 +337,11 @@ export class Input {
   }
 
   #clearMotion() {
-    this._motion.dx = 0;
-    this._motion.dy = 0;
-    this._motion.active = false;
+    this._motion.baseline = null;
+    this._motion.lastSample = null;
+    this._motion.neutralSince = null;
+    this._motion.lastTriggerAt = -MOTION_MIN_TRIGGER_INTERVAL_MS;
+    this.#setMotionDirection("idle");
     this.#mergeState();
   }
 
@@ -284,31 +370,255 @@ export class Input {
       waiters.forEach((done) => done(true));
     }
 
-    const maxTilt = 24;
-    const deadzone = 5;
-    const normalize = (value) => {
-      const magnitude = Math.abs(value);
-      if (magnitude < deadzone) return 0;
-      const sign = Math.sign(value);
-      return sign * Math.min(1, (magnitude - deadzone) / (maxTilt - deadzone));
-    };
+    const motion = this._motion;
+    const sample = this.#getMotionSample(gamma, beta);
+    if (this.#recordMotionCalibrationSample(sample)) return;
 
-    let dx = normalize(gamma);
-    let dy = normalize(beta);
-    const angle = Number(window.orientation ?? screen.orientation?.angle ?? 0);
-    if (angle === 90) {
-      [dx, dy] = [-dy, dx];
-    } else if (angle === -90 || angle === 270) {
-      [dx, dy] = [dy, -dx];
-    } else if (Math.abs(angle) === 180) {
-      dx *= -1;
-      dy *= -1;
+    const previous = motion.lastSample;
+
+    if (previous && previous.angle !== sample.angle) {
+      this.#handleMotionOrientationChange(sample);
+      return;
     }
 
-    this._motion.dx = dx;
-    this._motion.dy = dy;
-    this._motion.active = dx !== 0 || dy !== 0;
-    this.#mergeState();
+    if (motion.calibrationRequired) {
+      motion.lastSample = sample;
+      this.#setMotionDirection("idle");
+      this.#mergeState();
+      return;
+    }
+
+    if (!motion.baseline || !previous) {
+      this.#calibrateMotionBaseline(sample);
+      this.#mergeState();
+      return;
+    }
+
+    const now = this.#now();
+    const fromBaselineX = this.#deltaDegrees(sample.x, motion.baseline.x);
+    const fromBaselineY = this.#deltaDegrees(sample.y, motion.baseline.y);
+    const isNeutral =
+      Math.abs(fromBaselineX) <= MOTION_NEUTRAL_DEADZONE_DEG &&
+      Math.abs(fromBaselineY) <= MOTION_NEUTRAL_DEADZONE_DEG;
+
+    if (isNeutral) {
+      if (motion.neutralSince == null) motion.neutralSince = now;
+      if (this.#settleMotionNeutralHold()) {
+        this.#mergeState();
+      }
+      motion.lastSample = sample;
+      return;
+    }
+
+    motion.neutralSince = null;
+
+    const deltaX = this.#deltaDegrees(sample.x, previous.x);
+    const deltaY = this.#deltaDegrees(sample.y, previous.y);
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (
+      now - motion.lastTriggerAt >= MOTION_MIN_TRIGGER_INTERVAL_MS &&
+      Math.max(absX, absY) >= MOTION_TRIGGER_THRESHOLD_DEG
+    ) {
+      const direction = absX >= absY
+        ? (deltaX > 0 ? "right" : "left")
+        : (deltaY > 0 ? "down" : "up");
+
+      if (direction !== motion.latchedDirection) {
+        this.#setMotionDirection(direction);
+        motion.lastTriggerAt = now;
+        this.#mergeState();
+      }
+    }
+
+    motion.lastSample = sample;
+  }
+
+  #getMotionSample(gamma, beta) {
+    let x = gamma;
+    let y = beta;
+    const angle = Number(window.orientation ?? window.screen?.orientation?.angle ?? 0);
+    if (angle === 90) {
+      [x, y] = [-y, x];
+    } else if (angle === -90 || angle === 270) {
+      [x, y] = [y, -x];
+    } else if (Math.abs(angle) === 180) {
+      x *= -1;
+      y *= -1;
+    }
+
+    return { x, y, angle };
+  }
+
+  #deltaDegrees(current, previous) {
+    let delta = current - previous;
+    if (delta > 180) delta -= 360;
+    else if (delta < -180) delta += 360;
+    return delta;
+  }
+
+  #calibrateMotionBaseline(sample) {
+    this._motion.baseline = sample;
+    this._motion.lastSample = sample;
+    this._motion.neutralSince = null;
+    this._motion.lastTriggerAt = this.#now() - MOTION_MIN_TRIGGER_INTERVAL_MS;
+    this._motion.calibrationRequired = false;
+    this.#setMotionDirection("idle");
+  }
+
+  #recordMotionCalibrationSample(sample) {
+    const calibration = this._motionCalibration;
+    if (!calibration?.active) return false;
+
+    if (calibration.angle == null) {
+      calibration.angle = sample.angle;
+    }
+    if (sample.angle !== calibration.angle) {
+      this.#finishMotionCalibration({ ok: false, reason: "unstable" });
+      return true;
+    }
+
+    calibration.samples.push(sample);
+    this.#tryFinishMotionCalibration();
+    return true;
+  }
+
+  #tryFinishMotionCalibration() {
+    const calibration = this._motionCalibration;
+    if (!calibration?.active) return;
+    const elapsedMs = this.#now() - calibration.startedAt;
+    if (elapsedMs < calibration.durationMs) return;
+    if (calibration.samples.length < calibration.minSamples) return;
+
+    const result = this.#buildMotionCalibrationResult(calibration);
+    this.#finishMotionCalibration(result);
+  }
+
+  #buildMotionCalibrationResult(calibration) {
+    const samples = calibration.samples;
+    if (samples.length < calibration.minSamples) {
+      return { ok: false, reason: "timeout" };
+    }
+
+    const origin = samples[0];
+    const sum = samples.reduce((acc, sample) => {
+      acc.x += this.#deltaDegrees(sample.x, origin.x);
+      acc.y += this.#deltaDegrees(sample.y, origin.y);
+      return acc;
+    }, { x: 0, y: 0 });
+    const baseline = {
+      x: origin.x + sum.x / samples.length,
+      y: origin.y + sum.y / samples.length,
+      angle: origin.angle
+    };
+
+    const stability = samples.reduce((acc, sample) => {
+      acc.maxDeltaX = Math.max(acc.maxDeltaX, Math.abs(this.#deltaDegrees(sample.x, baseline.x)));
+      acc.maxDeltaY = Math.max(acc.maxDeltaY, Math.abs(this.#deltaDegrees(sample.y, baseline.y)));
+      return acc;
+    }, { maxDeltaX: 0, maxDeltaY: 0 });
+
+    if (
+      stability.maxDeltaX > calibration.maxDriftDeg ||
+      stability.maxDeltaY > calibration.maxDriftDeg
+    ) {
+      return {
+        ok: false,
+        reason: "unstable",
+        sampleCount: samples.length,
+        stability
+      };
+    }
+
+    return {
+      ok: true,
+      sampleCount: samples.length,
+      baseline,
+      stability
+    };
+  }
+
+  #finishMotionCalibration(result) {
+    const calibration = this._motionCalibration;
+    if (!calibration?.active) return;
+
+    calibration.active = false;
+    clearTimeout(calibration.durationId);
+    clearTimeout(calibration.timeoutId);
+    this._motionCalibration = null;
+
+    if (result.ok && result.baseline) {
+      this.#calibrateMotionBaseline(result.baseline);
+    } else {
+      this.#clearMotion();
+      this._motion.calibrationRequired = true;
+    }
+
+    calibration.resolve(result);
+  }
+
+  #cancelMotionCalibration() {
+    const calibration = this._motionCalibration;
+    if (!calibration) return;
+    clearTimeout(calibration.durationId);
+    clearTimeout(calibration.timeoutId);
+    this._motionCalibration = null;
+  }
+
+  #handleMotionOrientationChange(sample) {
+    this.#cancelMotionCalibration();
+    this.#clearMotion();
+    this._motion.lastSample = sample;
+    this._motion.calibrationRequired = true;
+    this._onMotionOrientationChange?.({ angle: sample.angle });
+  }
+
+  #settleMotionNeutralHold() {
+    if (!this._motionEnabled) return false;
+    const motion = this._motion;
+    if (motion.latchedDirection === "idle" || motion.neutralSince == null) return false;
+    if (this.#now() - motion.neutralSince < MOTION_NEUTRAL_HOLD_MS) return false;
+
+    this.#setMotionDirection("idle");
+    return true;
+  }
+
+  #setMotionDirection(direction) {
+    this._motion.latchedDirection = direction;
+
+    switch (direction) {
+      case "right":
+        this._motion.dx = 1;
+        this._motion.dy = 0;
+        break;
+      case "left":
+        this._motion.dx = -1;
+        this._motion.dy = 0;
+        break;
+      case "up":
+        this._motion.dx = 0;
+        this._motion.dy = -1;
+        break;
+      case "down":
+        this._motion.dx = 0;
+        this._motion.dy = 1;
+        break;
+      default:
+        this._motion.dx = 0;
+        this._motion.dy = 0;
+        this._motion.latchedDirection = "idle";
+        break;
+    }
+
+    this._motion.active = this._motion.latchedDirection !== "idle";
+  }
+
+  #now() {
+    if (typeof performance !== "undefined" && typeof performance.now === "function") {
+      return performance.now();
+    }
+    return Date.now();
   }
 
   // Merge stato (OR) tra tastiera e touch
