@@ -111,24 +111,19 @@
       </button>
     </div>
     <aside id="run-hud" class="run-hud" aria-label="Run status">
-      <div class="run-hud__block run-hud__block--level">
-        <span class="run-hud__label">LEVEL</span>
+      <div class="run-hud__block run-hud__block--score" aria-label="Score">
+        <img class="run-hud__icon" src="assets/collage/pickup_score_star.png" alt="">
+        <strong id="run-hud-score" class="run-hud__value">0</strong>
+      </div>
+
+      <div class="run-hud__block run-hud__block--level" aria-label="Level">
+        <img class="run-hud__icon" src="assets/collage/pickup_energy.png" alt="">
         <strong id="run-hud-level" class="run-hud__value">1</strong>
       </div>
 
-      <div class="run-hud__block run-hud__block--onion">
-        <span class="run-hud__label">OPINIONS</span>
-        <strong id="run-hud-onions" class="run-hud__value">0 / 0</strong>
-      </div>
-
-      <div class="run-hud__block run-hud__block--wave">
-        <div class="run-hud__metric-row">
-          <span class="run-hud__label">NEXT WAVE</span>
-          <strong id="run-hud-wave-text" class="run-hud__value">0 / 0</strong>
-        </div>
-        <div class="run-hud__meter run-hud__meter--segmented" aria-hidden="true">
-          <div id="run-hud-wave-bar" class="run-hud__meter-fill"></div>
-        </div>
+      <div class="run-hud__block run-hud__block--lives" aria-label="Players remaining">
+        <img class="run-hud__icon" src="assets/collage/player_idle.png" alt="">
+        <strong id="run-hud-lives" class="run-hud__value">3</strong>
       </div>
     </aside>
     <aside id="players-panel" class="players-panel" aria-label="Players online">
@@ -151,7 +146,7 @@
   </div>
 
   <script>
-    window.BUILD_VERSION = "2026.05.24.4-restart-play-arena";
+    window.BUILD_VERSION = "2026.05.24.5-compact-hud";
     const loaderScript = document.createElement("script");
     loaderScript.type = "module";
     loaderScript.src = `js/loader.js?v=${encodeURIComponent(window.BUILD_VERSION)}`;

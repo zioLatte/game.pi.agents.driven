@@ -56,10 +56,9 @@ const onionDeathSfxEl = document.getElementById("onion-death-sfx");
 const levelupSfxEl = document.getElementById("levelup-sfx");
 const playersPanelEl = document.getElementById("players-panel");
 const runHudEl = document.getElementById("run-hud");
+const runHudScoreEl = document.getElementById("run-hud-score");
 const runHudLevelEl = document.getElementById("run-hud-level");
-const runHudWaveTextEl = document.getElementById("run-hud-wave-text");
-const runHudWaveBarEl = document.getElementById("run-hud-wave-bar");
-const runHudOnionsEl = document.getElementById("run-hud-onions");
+const runHudLivesEl = document.getElementById("run-hud-lives");
 const levelToastEl = document.getElementById("level-toast");
 const touchControlsEl = document.getElementById("touch-controls");
 const touchFireBtnEl = document.getElementById("touch-fire");
@@ -291,6 +290,10 @@ window.withAssetVersion = withAssetVersion;
 if (arenaStartImg) {
   arenaStartImg.src = withAssetVersion("./assets/collage/play.png");
 }
+document.querySelectorAll(".run-hud__icon").forEach((img) => {
+  const src = img.getAttribute("src");
+  if (src) img.src = withAssetVersion(src);
+});
 
 function getRenderAssetImage(id) {
   return renderAssets.getImage(id);
@@ -563,44 +566,31 @@ function showLevelToast(level) {
   }, LEVEL_TOAST_DURATION_MS);
 }
 
-function formatHudRatio(value) {
-  const numericValue = Number(value);
-  if (!Number.isFinite(numericValue)) return 0;
-  return Math.max(0, Math.min(1, numericValue));
-}
-
 const runHudLastState = {
+  score: null,
   level: null,
-  onions: null,
-  waveText: null,
-  waveBarTransform: null
+  lives: null
 };
 
 function updateRunHud({ force = false } = {}) {
   const progress = levelManager.getWaveProgress();
-  const progressRatio = formatHudRatio(progress.progressRatio);
   const nextState = {
+    score: String(state.score),
     level: String(progress.currentLevel),
-    onions: `${progress.activePressureCount} / ${progress.maxAliveOnions}`,
-    waveText: `${progress.clearedOnions} / ${progress.totalOnions}`,
-    waveBarTransform: `scaleX(${progressRatio})`
+    lives: String(Math.max(0, MAX_CONTINUES - continueUses))
   };
 
+  if (runHudScoreEl && (force || runHudLastState.score !== nextState.score)) {
+    runHudScoreEl.textContent = nextState.score;
+    runHudLastState.score = nextState.score;
+  }
   if (runHudLevelEl && (force || runHudLastState.level !== nextState.level)) {
     runHudLevelEl.textContent = nextState.level;
     runHudLastState.level = nextState.level;
   }
-  if (runHudOnionsEl && (force || runHudLastState.onions !== nextState.onions)) {
-    runHudOnionsEl.textContent = nextState.onions;
-    runHudLastState.onions = nextState.onions;
-  }
-  if (runHudWaveTextEl && (force || runHudLastState.waveText !== nextState.waveText)) {
-    runHudWaveTextEl.textContent = nextState.waveText;
-    runHudLastState.waveText = nextState.waveText;
-  }
-  if (runHudWaveBarEl && (force || runHudLastState.waveBarTransform !== nextState.waveBarTransform)) {
-    runHudWaveBarEl.style.transform = nextState.waveBarTransform;
-    runHudLastState.waveBarTransform = nextState.waveBarTransform;
+  if (runHudLivesEl && (force || runHudLastState.lives !== nextState.lives)) {
+    runHudLivesEl.textContent = nextState.lives;
+    runHudLastState.lives = nextState.lives;
   }
 }
 
@@ -902,6 +892,7 @@ function beginPlayerDefeat(now) {
   const frameNow = Number.isFinite(now) ? now : performance.now();
   continueUses += 1;
   updateContinueButton();
+  updateRunHud();
 
   playerDefeatState.active = true;
   playerDefeatState.reviveAt = frameNow + PLAYER_DEFEATED_STANDBY_MS;
@@ -933,6 +924,7 @@ function beginArenaRestart(now = performance.now()) {
   continueUses = 0;
   resetGame(1, true);
   updateContinueButton();
+  updateRunHud({ force: true });
 
   awaitingArenaStartClick = true;
   arenaStartMode = "restart";
@@ -1140,6 +1132,7 @@ function jumpToLevel(level) {
   resetGame(level, true);
   continueUses = 0;
   updateContinueButton();
+  updateRunHud({ force: true });
   stopGameOverSfx();
   startBgmOnce();
   fadeBgm(audio.BGM_BASE_VOLUME, 300);
@@ -2201,6 +2194,7 @@ if (playAgainBtn) {
     resetGame(1);
     continueUses = 0;
     updateContinueButton();
+    updateRunHud({ force: true });
     stopGameOverSfx();
     if (bgmEl) {
       bgmEl.currentTime = 0;
@@ -2218,6 +2212,7 @@ if (continueBtn) {
     resetGame(levelManager.currentLevel, false);
     continueUses += 1;
     updateContinueButton();
+    updateRunHud({ force: true });
     stopGameOverSfx();
     if (bgmEl) {
       bgmEl.currentTime = 0;
