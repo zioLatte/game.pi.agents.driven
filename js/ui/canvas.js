@@ -1,6 +1,6 @@
 export function fixCanvasDPI(canvas, ctx) {
   if (!canvas || !ctx) return;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   const rect = canvas.getBoundingClientRect();
@@ -49,7 +49,7 @@ export function sizeCanvasToLayout(canvas, layoutEl, gameWrapEl) {
 export function refreshWorldSize(canvas, ctx, layoutEl, gameWrapEl) {
   sizeCanvasToLayout(canvas, layoutEl, gameWrapEl);
   fixCanvasDPI(canvas, ctx);
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   return {
     width: canvas.width / dpr,
     height: canvas.height / dpr

@@ -10,21 +10,15 @@ export const ARENA_ASSET_MANIFEST = [
   { id: "sprites.onionChase", path: "./assets/collage/onion_chase.png" },
   { id: "sprites.onionDefeated", path: "./assets/collage/onion_defeated.png" },
   { id: "sprites.onionQueued", path: "./assets/collage/onion_queued.png" },
-  { id: "sprites.flyerIdle", path: "./assets/collage/flyer_idle.png" },
-  { id: "sprites.flyerMove", path: "./assets/collage/flyer_move.png" },
-  { id: "sprites.flyerDamage", path: "./assets/collage/flyer_damage.png" },
   { id: "sprites.speedBolt", path: "./assets/collage/pickup_power.png" },
   { id: "sprites.boostRing", path: "./assets/collage/pickup_energy.png" },
   { id: "sprites.scoreStar", path: "./assets/collage/pickup_score_star.png" },
-  { id: "sprites.health", path: "./assets/collage/pickup_health.png" },
   { id: "tiles.arenaFloor", path: "./assets/collage/paper_arena_bg.png" },
   { id: "tiles.gateHorizontal", path: "./assets/collage/gate_horizontal.png" },
   { id: "tiles.gateVertical", path: "./assets/collage/gate_vertical.png" },
   { id: "tiles.wallStraight", path: "./assets/collage/wall_straight.png" },
   { id: "tiles.wallCorner", path: "./assets/collage/block_gate.png" },
-  { id: "tiles.purpleStain", path: "./assets/collage/purple_stain.png" },
-  { id: "hud.numberBox", path: "./assets/collage/hud_number_box.png" },
-  { id: "hud.waveBarSegment", path: "./assets/collage/hud_wave_bar_segment.png" }
+  { id: "tiles.purpleStain", path: "./assets/collage/purple_stain.png" }
 ];
 
 export class AssetLoader {

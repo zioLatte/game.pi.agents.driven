@@ -253,6 +253,10 @@ const PI_START_LEVEL = {
 const ASSET_VERSION = window.ASSET_VERSION || window.BUILD_VERSION || null;
 const renderAssets = new AssetLoader(ARENA_ASSET_MANIFEST, { version: ASSET_VERSION });
 const renderPatternCache = new Map();
+const arenaFloorCache = {
+  key: "",
+  canvas: null
+};
 window.PICHAN_RENDER_ASSETS = renderAssets;
 
 function withAssetVersion(path) {
@@ -929,6 +933,16 @@ function drawImageCover(ctx, image, x, y, width, height) {
   return true;
 }
 
+function getArenaRenderKey(arena, paperImage, stainImage) {
+  if (!arena?.points?.length) return "";
+  const pointKey = arena.points
+    .map((point) => `${Math.round(point.x * 10) / 10},${Math.round(point.y * 10) / 10}`)
+    .join("|");
+  const paperKey = paperImage?.currentSrc || paperImage?.src || "fallback";
+  const stainKey = stainImage?.currentSrc || stainImage?.src || "none";
+  return `${Math.round(WORLD_WIDTH)}x${Math.round(WORLD_HEIGHT)}:${paperKey}:${stainKey}:${pointKey}`;
+}
+
 function drawArenaPath(ctx, points) {
   if (!points?.length) return;
   ctx.beginPath();
@@ -1037,18 +1051,36 @@ function drawFallbackArenaFloor(ctx) {
 function drawArenaFloor(ctx, arena) {
   if (!arena?.points?.length) return;
 
-  ctx.save();
-  drawArenaPath(ctx, arena.points);
-  ctx.clip();
   const paperImage = getRenderAssetImage("tiles.arenaFloor");
-  if (!drawImageCover(ctx, paperImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT)) {
-    drawFallbackArenaFloor(ctx);
+  const stainImage = getRenderAssetImage("tiles.purpleStain");
+  const cacheKey = getArenaRenderKey(arena, paperImage, stainImage);
+  if (arenaFloorCache.key === cacheKey && arenaFloorCache.canvas) {
+    ctx.drawImage(arenaFloorCache.canvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    return;
   }
-  ctx.restore();
+
+  const floorCanvas = document.createElement("canvas");
+  floorCanvas.width = Math.max(1, Math.ceil(WORLD_WIDTH));
+  floorCanvas.height = Math.max(1, Math.ceil(WORLD_HEIGHT));
+  const floorCtx = floorCanvas.getContext("2d");
+  if (!floorCtx) return;
+  floorCtx.imageSmoothingEnabled = false;
+
+  floorCtx.save();
+  drawArenaPath(floorCtx, arena.points);
+  floorCtx.clip();
+  if (!drawImageCover(floorCtx, paperImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT)) {
+    drawFallbackArenaFloor(floorCtx);
+  }
+  drawArenaPaperDecoration(floorCtx, arena, stainImage);
+  floorCtx.restore();
+
+  arenaFloorCache.key = cacheKey;
+  arenaFloorCache.canvas = floorCanvas;
+  ctx.drawImage(floorCanvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 }
 
-function drawArenaPaperDecoration(ctx, arena) {
-  const stainImage = getRenderAssetImage("tiles.purpleStain");
+function drawArenaPaperDecoration(ctx, arena, stainImage = getRenderAssetImage("tiles.purpleStain")) {
   if (!arena?.points?.length || !stainImage) return;
 
   const size = Math.max(58, Math.min(98, Math.min(WORLD_WIDTH, WORLD_HEIGHT) * 0.13));
@@ -1482,7 +1514,6 @@ function draw(now) {
 
     drawOutsideTerrain(ctx);
     drawArenaFloor(ctx, arena);
-    drawArenaPaperDecoration(ctx, arena);
     drawQueuedOnionPreviews(ctx, gates, progress, now);
 
     ctx.save();
@@ -1550,7 +1581,6 @@ const ASSET_IMAGES = [
   "./assets/collage/pickup_energy.png",
   "./assets/collage/pickup_power.png",
   "./assets/collage/pickup_score_star.png",
-  "./assets/collage/pickup_health.png",
   "./assets/collage/gate_horizontal.png",
   "./assets/collage/gate_vertical.png",
   "./assets/collage/block_gate.png",

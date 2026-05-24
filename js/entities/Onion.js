@@ -457,14 +457,6 @@ export class Onion {
     ctx.save();
     const inChase = this.state === ONION_STATE.CHASE_PICHAN;
     const boosted = this.isSpeedBoosted(frameNow);
-    const chaseBoost = this.chaseSpeedScale ?? 1;
-    let saturation = 1;
-    if (inChase && chaseBoost > 1) {
-      saturation = 1.8;
-    } else if (boosted) {
-      saturation = 1.45;
-    }
-    ctx.filter = `saturate(${saturation})`;
     let alpha = this.fade;
     ctx.globalAlpha = alpha;
 
@@ -476,8 +468,8 @@ export class Onion {
     ctx.rotate(this.visualAngle + Math.sin(this.wigglePhase * 0.65) * 0.03);
 
     const glowAlpha = inChase ? 0.65 : 0.24;
-    ctx.shadowColor = boosted ? "rgba(95, 235, 255, 0.72)" : (inChase ? 'rgba(255, 95, 95, 0.65)' : 'rgba(255, 170, 90, 0.28)');
-    ctx.shadowBlur = boosted ? 14 : (inChase ? 10 : 5);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
 
     const fallbackSprite = this.dying && this.spriteDefeated.loaded
       ? this.spriteDefeated.img

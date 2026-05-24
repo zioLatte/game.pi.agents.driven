@@ -288,9 +288,8 @@ export class Player {
     ctx.save();
     ctx.translate(px, py);
     ctx.scale(squashX, squashY);
-    ctx.filter = boosted ? "saturate(1.9) brightness(1.08)" : "saturate(1.5)";
-    ctx.shadowColor = boosted ? "rgba(90, 235, 255, 0.85)" : "rgba(255, 240, 180, 0.7)";
-    ctx.shadowBlur = boosted ? 18 : 10;
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
 
     if (boosted) {
       const pulse = 0.5 + 0.5 * Math.sin(frameNow / 90);

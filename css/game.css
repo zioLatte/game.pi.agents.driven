@@ -243,9 +243,7 @@
       overflow: hidden;
       border: 2px solid rgba(42, 38, 35, 0.82);
       border-radius: 2px;
-      background:
-        url("../assets/collage/hud_wave_bar_segment.png") center / 100% 100% no-repeat,
-        #d8cab0;
+      background: #d8cab0;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
     }
 
