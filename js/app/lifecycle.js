@@ -4,7 +4,6 @@ export function createLifecycle({
   setIsPaused,
   isOverlayActive,
   startEngineIfReady,
-  updatePlayersPanelVisibility,
   pauseAudio,
   resumeAudio
 }) {
@@ -13,7 +12,6 @@ export function createLifecycle({
       if (getIsPaused()) return;
       setIsPaused(true);
       engine.stop();
-      updatePlayersPanelVisibility();
       pauseAudio();
     },
 
@@ -26,7 +24,6 @@ export function createLifecycle({
 
     handleBlur() {
       engine.stop();
-      updatePlayersPanelVisibility();
     },
 
     handleFocus() {

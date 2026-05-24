@@ -12,8 +12,6 @@ import { AssetLoader, ARENA_ASSET_MANIFEST } from "./js/core/assets.js";
 import { createAudioController } from "./js/ui/audio.js";
 import { Explosion } from "./js/entities/Explosion.js";
 import { refreshWorldSize, buildBackground } from "./js/ui/canvas.js";
-import { createNicknameManager } from "./js/ui/nickname.js";
-import { createOnlineService } from "./js/services/onlineService.js";
 import { createLifecycle } from "./js/app/lifecycle.js";
 
 
@@ -43,11 +41,6 @@ const gotoCloseBtn = document.getElementById("goto-close");
 const gotoTable = document.getElementById("goto-table");
 const gotoInput = document.getElementById("goto-input");
 const gotoApplyBtn = document.getElementById("goto-apply");
-const nicknameOverlay = document.getElementById("nickname-overlay");
-const nicknameValueEl = document.getElementById("nickname-value");
-const nicknameApplyBtn = document.getElementById("nickname-apply");
-const nicknameRegenBtn = document.getElementById("nickname-regenerate");
-const nicknameError = document.getElementById("nickname-error");
 const mobileWarningEl = document.getElementById("mobile-warning");
 const bgmEl = document.getElementById("bgm");
 const gameoverSfxEl = document.getElementById("gameover-sfx");
@@ -55,18 +48,14 @@ const shotSfxEl = document.getElementById("shot-sfx");
 const bounceSfxEl = document.getElementById("bounce-sfx");
 const onionDeathSfxEl = document.getElementById("onion-death-sfx");
 const levelupSfxEl = document.getElementById("levelup-sfx");
-const playersPanelEl = document.getElementById("players-panel");
 const runHudEl = document.getElementById("run-hud");
 const runHudScoreEl = document.getElementById("run-hud-score");
 const runHudLevelEl = document.getElementById("run-hud-level");
 const runHudLivesEl = document.getElementById("run-hud-lives");
+const hudRestartBtn = document.getElementById("hud-restart");
 const levelToastEl = document.getElementById("level-toast");
 const touchControlsEl = document.getElementById("touch-controls");
 const touchFireBtnEl = document.getElementById("touch-fire");
-const touchUpBtnEl = document.getElementById("touch-up");
-const touchDownBtnEl = document.getElementById("touch-down");
-const touchLeftBtnEl = document.getElementById("touch-left");
-const touchRightBtnEl = document.getElementById("touch-right");
 const LEVEL_START_DELAY_MS = 1400;
 const LEVEL_TOAST_DURATION_MS = 1300;
 const LEVELUP_SFX_FADE_DELAY_MS = 900;
@@ -74,14 +63,15 @@ const LEVELUP_SFX_FADE_MS = 350;
 const MAX_CONTINUES = 3;
 const PLAYER_DEFEATED_STANDBY_MS = 2000;
 const PLAYER_REVIVE_GRACE_MS = 1200;
+const MOBILE_MOTION_REQUIRED_MESSAGE = "Questo smartphone non espone il giroscopio richiesto. Il gioco non e' disponibile da smartphone.";
 let levelOverlayTimeoutId = null;
 let levelToastTimeoutId = null;
 let levelupSfxFadeTimeoutId = null;
 let lastChaseEndTime = 0;
 let continueUses = 0;
 let isPaused = false;
-let playersPanelLayoutVisible = false;
 let gotoResumeAllowed = false;
+let mobileMotionUnavailable = false;
 const audio = createAudioController({
   bgmEl,
   gameoverSfxEl,
@@ -107,7 +97,6 @@ const playerDefeatState = {
   x: 0,
   y: 0
 };
-const onlineService = createOnlineService();
 const STATS_KEYS = {
   games: "pi_games_played",
   maxScore: "pi_max_score",
@@ -239,24 +228,6 @@ function drawSpeedDot(ctx, dot, now) {
 
 window.addScreenShake = addScreenShake;
 window.triggerGameFlash = triggerGameFlash;
-const NICK_KEY = "pi_nickname";
-let nickname = (localStorage.getItem(NICK_KEY) || "").trim();
-let playMs = 0;
-if (!nickname) {
-  const nicknameManager = createNicknameManager({
-    nicknameOverlay,
-    nicknameValueEl,
-    nicknameApplyBtn,
-    nicknameRegenBtn,
-    nicknameError
-  });
-  nickname = await nicknameManager.requestNickname();
-  localStorage.setItem(NICK_KEY, nickname);
-}
-
-Promise.resolve(onlineService.init({ nickname, stats })).catch((e) => {
-  console.error("[onlineService.init]", e);
-});
 const PI_START_LEVEL = {
   0: 1,
   1: 2,
@@ -306,6 +277,26 @@ function isTouchDevice() {
   return hasTouchPoints || coarsePointer || ("ontouchstart" in window);
 }
 
+function hasMobileMotionApi() {
+  return typeof window !== "undefined" && "DeviceOrientationEvent" in window;
+}
+
+function showMobileMotionUnavailable() {
+  mobileMotionUnavailable = true;
+  window.PICHAN_MOBILE_UNAVAILABLE = true;
+  document.body.classList.add("is-mobile-unavailable");
+  if (mobileWarningEl) {
+    mobileWarningEl.textContent = MOBILE_MOTION_REQUIRED_MESSAGE;
+    mobileWarningEl.classList.add("visible");
+    mobileWarningEl.setAttribute("aria-hidden", "false");
+  }
+  if (touchControlsEl) {
+    touchControlsEl.setAttribute("aria-hidden", "true");
+  }
+  setArenaStartVisible(false);
+  stopAllAudio();
+}
+
 function startBgmOnce() {
   audio.startBgmOnce();
 }
@@ -335,7 +326,6 @@ function setArenaStartVisible(next) {
 
 function drawArenaStartPreview() {
   updateRunHud();
-  updatePlayersPanelVisibility();
   draw(performance.now());
 }
 
@@ -355,6 +345,11 @@ function drawArenaOnly(now = performance.now()) {
 }
 
 function startEngineIfReady() {
+  if (mobileMotionUnavailable) {
+    startPending = false;
+    setArenaStartVisible(false);
+    return;
+  }
   if (!assetsLoaded) {
     startPending = true;
     return;
@@ -380,12 +375,38 @@ function startEngineIfReady() {
   syncMaxLevelStat();
   engine.start();
   updateRunHud();
-  updatePlayersPanelVisibility();
 }
 
 function startFromArenaPlay(event) {
   if (!awaitingArenaStartClick) return;
   const wasRestart = arenaStartMode === "restart";
+  if (motionTouchEnabled) {
+    if (mobileMotionUnavailable || !hasMobileMotionApi()) {
+      showMobileMotionUnavailable();
+      return;
+    }
+    input.requestMotionPermission?.()
+      .then((motionGranted) => {
+        if (!motionGranted) {
+          showMobileMotionUnavailable();
+          return;
+        }
+        return input.waitForMotionSignal?.(1500);
+      })
+      .then((motionReady) => {
+        if (motionReady !== true) {
+          showMobileMotionUnavailable();
+          return;
+        }
+        completeArenaStart(wasRestart);
+      })
+      .catch(() => showMobileMotionUnavailable());
+    return;
+  }
+  completeArenaStart(wasRestart);
+}
+
+function completeArenaStart(wasRestart) {
   awaitingArenaStartClick = false;
   arenaStartMode = "hidden";
   window.PICHAN_WAIT_FOR_ARENA_PLAY = false;
@@ -393,9 +414,22 @@ function startFromArenaPlay(event) {
   if (wasRestart) {
     stopLevelupSfx();
   }
+  requestMobileFullscreen();
   input.clearShoot?.();
   startBgmOnce();
   startEngineIfReady();
+}
+
+function requestMobileFullscreen() {
+  if (!motionTouchEnabled) return;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const target = document.documentElement;
+  const request = target.requestFullscreen || target.webkitRequestFullscreen;
+  if (typeof request !== "function") return;
+  try {
+    const result = request.call(target);
+    if (result?.catch) result.catch(() => {});
+  } catch {}
 }
 
 function stopBgm() {
@@ -537,7 +571,7 @@ function updateWorldSize() {
 }
 
 updateWorldSize();
-updatePlayersPanelAlignment();
+updateLayoutAlignment();
 
 // ----------------------------------------------------------
 // BACKGROUND (static, low-contrast)
@@ -591,7 +625,7 @@ function applyWorldResize() {
     }
   }
 
-  updatePlayersPanelAlignment();
+  updateLayoutAlignment();
   if (awaitingArenaStartClick) {
     if (arenaStartMode === "restart") {
       drawArenaOnly();
@@ -629,6 +663,10 @@ if (touchEnabled) {
   }
   if (mobileWarningEl) {
     mobileWarningEl.classList.remove("visible");
+    mobileWarningEl.setAttribute("aria-hidden", "true");
+  }
+  if (motionTouchEnabled && !hasMobileMotionApi()) {
+    showMobileMotionUnavailable();
   }
 }
 const PLAYER_SPEED_DESKTOP = 300;
@@ -643,10 +681,6 @@ updateSpriteScale();
 
 const input = new Input({
   fireBtnEl: touchEnabled && !motionTouchEnabled ? touchFireBtnEl : null,
-  upBtnEl: touchEnabled && !motionTouchEnabled ? touchUpBtnEl : null,
-  downBtnEl: touchEnabled && !motionTouchEnabled ? touchDownBtnEl : null,
-  leftBtnEl: touchEnabled && !motionTouchEnabled ? touchLeftBtnEl : null,
-  rightBtnEl: touchEnabled && !motionTouchEnabled ? touchRightBtnEl : null,
   motionEnabled: motionTouchEnabled,
   touchShootSurfaceEl: motionTouchEnabled ? document : null,
   ignoreTouchShootSelector: "#arena-start-button, button, input, textarea, select, a"
@@ -720,7 +754,6 @@ function showGotoOverlay() {
   gotoResumeAllowed = engine.running && !isPaused && !gameoverOverlay?.classList.contains("visible") && !levelOverlay?.classList.contains("visible");
   engine.stop();
   gotoOverlay.classList.add("visible");
-  updatePlayersPanelVisibility();
 }
 
 function hideGotoOverlay({ resume = true } = {}) {
@@ -734,7 +767,6 @@ function hideGotoOverlay({ resume = true } = {}) {
     && !gameoverOverlay?.classList.contains("visible")
     && !levelOverlay?.classList.contains("visible");
   gotoResumeAllowed = false;
-  updatePlayersPanelVisibility();
   if (shouldResume) {
     startEngineIfReady();
   }
@@ -891,7 +923,6 @@ function showGameOver() {
   hideLevelOverlay();
   clearLevelToast({ fadeAudio: true });
   if (!gameoverOverlay) return;
-  updatePlayersPanelVisibility();
   addScreenShake(0.24);
   triggerGameFlash("rgba(255, 70, 70, 1)", 0.16);
   stopAllAudio();
@@ -921,7 +952,6 @@ function formatTime(totalSeconds) {
 function hideGameOver() {
   if (!gameoverOverlay) return;
   gameoverOverlay.classList.remove("visible");
-  updatePlayersPanelVisibility();
 }
 
 function updateContinueButton() {
@@ -1019,7 +1049,6 @@ function showLevelOverlay(level) {
     }, LEVEL_START_DELAY_MS);
 
     levelOverlay.classList.add("visible");
-    updatePlayersPanelVisibility();
   };
 
   if (!levelOnionPreloadDone) {
@@ -1038,7 +1067,6 @@ function hideLevelOverlay() {
   if (!levelOverlay) return;
   audio.stopLevelupSfx();
   levelOverlay.classList.remove("visible");
-  updatePlayersPanelVisibility();
 }
 
 function jumpToPressureIndex(pi) {
@@ -1070,41 +1098,10 @@ function isOverlayActive() {
   return Boolean(gameOverVisible || levelVisible || gotoVisible);
 }
 
-function updatePlayersPanelVisibility() {
-  if (!playersPanelEl || !onlineService.hasPlayersPanel) {
-    if (playersPanelEl) {
-      playersPanelEl.classList.remove("is-visible");
-    }
-    layoutEl?.classList.remove("has-players-panel");
-    if (playersPanelLayoutVisible) {
-      playersPanelLayoutVisible = false;
-      requestAnimationFrame(() => applyWorldResize());
-    }
-    return;
-  }
-  const shouldShow = (engine.running || isPaused) && !isOverlayActive();
-  playersPanelEl.classList.toggle("is-visible", shouldShow);
-  layoutEl?.classList.toggle("has-players-panel", shouldShow);
-  if (playersPanelLayoutVisible !== shouldShow) {
-    playersPanelLayoutVisible = shouldShow;
-    requestAnimationFrame(() => applyWorldResize());
-  }
-}
-
-function updatePlayersPanelAlignment() {
-  if (!canvas || !layoutEl) return;
-  const canvasRect = canvas.getBoundingClientRect();
-  const layoutRect = layoutEl.getBoundingClientRect();
-  const offsetTop = Math.max(0, Math.round(canvasRect.top - layoutRect.top));
-  const panelHeight = `${Math.max(0, Math.round(canvasRect.height))}px`;
-
+function updateLayoutAlignment() {
   if (runHudEl) {
     runHudEl.style.marginTop = "0";
     runHudEl.style.maxHeight = "none";
-  }
-  if (playersPanelEl && onlineService.hasPlayersPanel) {
-    playersPanelEl.style.marginTop = `${offsetTop}px`;
-    playersPanelEl.style.maxHeight = panelHeight;
   }
 }
 
@@ -1619,19 +1616,6 @@ function update(dt, now) {
 
   // 1) tempo
   state.gameTime += dt;
-  if (!isOverlayActive() && !isPaused) {
-    playMs += dt * 1000;
-  }
-  onlineService.updateGameState({
-    level: levelManager.currentLevel,
-    score: state.score
-  }, now);
-  onlineService.writeStats({
-    totalScore: state.score,
-    maxLevel: stats.maxLevel,
-    gamesPlayed: stats.games,
-    totalPlayMs: Math.floor(playMs)
-  }, now);
 
   // 1b) chase feedback (solo flash onion + BGM boost)
   const chaseEnd = window.chaseEndTime || 0;
@@ -1968,7 +1952,6 @@ const lifecycle = createLifecycle({
   },
   isOverlayActive,
   startEngineIfReady,
-  updatePlayersPanelVisibility,
   pauseAudio: () => {
     if (bgmEl) bgmEl.pause();
   },
@@ -1978,10 +1961,6 @@ const lifecycle = createLifecycle({
     }
   }
 });
-// Mobile ora supportato tramite controlli touch: non bloccare il gioco.
-if (mobileWarningEl) {
-  mobileWarningEl.classList.remove("visible");
-}
 const ASSET_IMAGES = [
   "./assets/collage/player_idle.png",
   "./assets/collage/player_right.png",
@@ -1991,6 +1970,7 @@ const ASSET_IMAGES = [
   "./assets/collage/player_defeated.png",
   "./assets/collage/play.png",
   "./assets/collage/gameover.png",
+  "./assets/collage/restart.png",
   "./assets/collage/onion_idle.png",
   "./assets/collage/onion_chase.png",
   "./assets/collage/onion_defeated.png",
@@ -2061,6 +2041,14 @@ if (arenaStartBtn) {
     startFromArenaPlay(event);
   });
   arenaStartBtn.addEventListener("click", startFromArenaPlay);
+}
+
+if (hudRestartBtn) {
+  hudRestartBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.location.reload();
+  });
 }
 
 let gotoKeyHits = [];
@@ -2160,7 +2148,3 @@ if (continueBtn) {
     startEngineIfReady();
   });
 }
-
-window.addEventListener("pagehide", () => {
-  onlineService.dispose();
-});

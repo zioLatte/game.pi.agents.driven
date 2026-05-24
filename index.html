@@ -90,17 +90,6 @@
       </div>
     </div>
   </div>
-  <div id="nickname-overlay" role="dialog" aria-modal="true">
-    <div id="nickname-box">
-      <div id="nickname-title">you are</div>
-      <div id="nickname-value" aria-live="polite"></div>
-      <div id="nickname-error" aria-live="polite"></div>
-      <div>
-        <button id="nickname-regenerate" type="button">NOPE (3)</button>
-        <button id="nickname-apply" type="button">YEAH</button>
-      </div>
-    </div>
-  </div>
   <div id="level-toast" class="level-toast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true"></div>
   <div id="layout">
     <div id="game-wrap">
@@ -126,28 +115,20 @@
         <img class="run-hud__icon" src="assets/collage/player_idle.png" alt="">
         <strong id="run-hud-lives" class="run-hud__value">3</strong>
       </div>
-    </aside>
-    <aside id="players-panel" class="players-panel" aria-label="Players online">
-      <div class="players-panel__title">Players online</div>
-      <div id="players-list" class="players-panel__list" role="list"></div>
+
+      <button id="hud-restart" class="run-hud__restart" type="button" aria-label="Restart">
+        <img class="run-hud__icon" src="assets/collage/restart.png" alt="">
+      </button>
     </aside>
   </div>
 
-  <!-- Mobile controls: left FIRE button, right direction joystick -->
+  <!-- Mobile controls: touch fire only; movement is motion-only on smartphone. -->
   <div id="touch-controls" aria-hidden="true">
     <button id="touch-fire" type="button" aria-label="Spara">SPARA</button>
-    <div id="touch-dpad" role="group" aria-label="Direzione">
-      <button id="touch-left" type="button" aria-label="Sinistra">◀</button>
-      <div id="touch-dpad-center" aria-hidden="true">
-        <button id="touch-up" type="button" aria-label="Su">▲</button>
-        <button id="touch-down" type="button" aria-label="Giù">▼</button>
-      </div>
-      <button id="touch-right" type="button" aria-label="Destra">▶</button>
-    </div>
   </div>
 
   <script>
-    window.BUILD_VERSION = "2026.05.24.6-gameover-asset";
+    window.BUILD_VERSION = "2026.05.24.11-remove-dpad";
     const loaderScript = document.createElement("script");
     loaderScript.type = "module";
     loaderScript.src = `js/loader.js?v=${encodeURIComponent(window.BUILD_VERSION)}`;

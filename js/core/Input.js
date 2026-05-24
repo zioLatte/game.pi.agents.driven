@@ -5,7 +5,7 @@
 // RESPONSABILITÀ DEL MODULO
 // ----------------------------------------------------------
 // • Tastiera: WASD + frecce + spazio
-// • Touch: joystick top-down (solo direzione) + bottone SPARA
+// • Touch: bottone SPARA
 // • Motion: tilt dispositivo su smartphone
 //
 // CONTRATTO PUBBLICO
@@ -15,8 +15,6 @@
 //
 // NOTE
 // ----------------------------------------------------------
-// • Touch joystick replica semanticamente le frecce: niente diagonali.
-// • Distanza dal centro NON conta: serve solo l'angolo.
 // • SPARA su mobile è solo tap (shootPressed), nessun autofire.
 // • Motion produce un asse analogico normalizzato con deadzone.
 //
@@ -24,13 +22,7 @@
 export class Input {
   constructor(options = {}) {
     const {
-      joystickEl = null,
-      joystickKnobEl = null,
       fireBtnEl = null,
-      upBtnEl = null,
-      downBtnEl = null,
-      leftBtnEl = null,
-      rightBtnEl = null,
       motionEnabled = false,
       touchShootSurfaceEl = null,
       ignoreTouchShootSelector = ""
@@ -42,22 +34,19 @@ export class Input {
     this._motion = { dx: 0, dy: 0, active: false };
 
     // Touch internals
-    this._joystickEl = joystickEl;
-    this._joystickKnobEl = joystickKnobEl;
     this._fireBtnEl = fireBtnEl;
-    this._upBtnEl = upBtnEl;
-    this._downBtnEl = downBtnEl;
-    this._leftBtnEl = leftBtnEl;
-    this._rightBtnEl = rightBtnEl;
     this._motionEnabled = Boolean(motionEnabled);
     this._touchShootSurfaceEl = touchShootSurfaceEl;
     this._ignoreTouchShootSelector = ignoreTouchShootSelector;
-    this._joystickPointerId = null;
     this._firePointerId = null;
     this._touchShootPointerIds = new Set();
     this._shootTapQueued = false;
     this._shootPressedFrame = false;
     this._moveVector = { dx: 0, dy: 0, shootHeld: false };
+    this._motionHandler = null;
+    this._motionListening = false;
+    this._motionSignalSeen = false;
+    this._motionSignalWaiters = [];
 
     // Tastiera
     window.addEventListener("keydown", (e) => this.#onKeyDown(e));
@@ -65,7 +54,6 @@ export class Input {
 
     // Touch (Pointer Events)
     this.#bindTouch();
-    this.#bindDpad();
     this.#bindMotion();
     this.#bindTouchShootSurface();
   }
@@ -96,6 +84,43 @@ export class Input {
   clearShoot() {
     this._shootTapQueued = false;
     this._shootPressedFrame = false;
+  }
+
+  requestMotionPermission() {
+    if (!this._motionEnabled || typeof window === "undefined") return Promise.resolve(false);
+    if (!("DeviceOrientationEvent" in window)) return Promise.resolve(false);
+
+    const request = window.DeviceOrientationEvent?.requestPermission;
+    if (typeof request !== "function") {
+      this.#startMotionListening();
+      return Promise.resolve(true);
+    }
+
+    return request.call(window.DeviceOrientationEvent)
+      .then((state) => {
+        if (state === "granted") {
+          this.#startMotionListening();
+          return true;
+        }
+        this.#clearMotion();
+        return false;
+      })
+      .catch(() => false);
+  }
+
+  waitForMotionSignal(timeoutMs = 1500) {
+    if (!this._motionEnabled || typeof window === "undefined") return Promise.resolve(false);
+    if (this._motionSignalSeen) return Promise.resolve(true);
+
+    return new Promise((resolve) => {
+      const done = (result) => {
+        clearTimeout(timeoutId);
+        this._motionSignalWaiters = this._motionSignalWaiters.filter((waiter) => waiter !== done);
+        resolve(result);
+      };
+      const timeoutId = setTimeout(() => done(false), Math.max(0, timeoutMs));
+      this._motionSignalWaiters.push(done);
+    });
   }
 
   // ----------------------------------------------------------
@@ -176,55 +201,13 @@ export class Input {
   // Touch
   // ----------------------------------------------------------
   #bindTouch() {
-    if (!this._joystickEl && !this._fireBtnEl) return;
-
-    // Joystick area
-    if (this._joystickEl) {
-      this._joystickEl.addEventListener("pointerdown", (e) => this.#onJoyDown(e));
-      this._joystickEl.addEventListener("pointermove", (e) => this.#onJoyMove(e));
-      this._joystickEl.addEventListener("pointerup", (e) => this.#onJoyUp(e));
-      this._joystickEl.addEventListener("pointercancel", (e) => this.#onJoyUp(e));
-      this._joystickEl.addEventListener("lostpointercapture", (e) => this.#onJoyUp(e));
-    }
+    if (!this._fireBtnEl) return;
 
     // Fire button
-    if (this._fireBtnEl) {
-      this._fireBtnEl.addEventListener("pointerdown", (e) => this.#onFireDown(e));
-      this._fireBtnEl.addEventListener("pointerup", (e) => this.#onFireUp(e));
-      this._fireBtnEl.addEventListener("pointercancel", (e) => this.#onFireUp(e));
-      this._fireBtnEl.addEventListener("lostpointercapture", (e) => this.#onFireUp(e));
-    }
-  }
-
-  #bindDpad() {
-    const bindBtn = (el, dirKey) => {
-      if (!el) return;
-      el.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        this._touch.up = false;
-        this._touch.down = false;
-        this._touch.left = false;
-        this._touch.right = false;
-        this._touch[dirKey] = true;
-        el.classList.add("is-active");
-        this.#mergeState();
-      });
-      const clear = (e) => {
-        e.preventDefault();
-        this._touch[dirKey] = false;
-        el.classList.remove("is-active");
-        this.#mergeState();
-      };
-      el.addEventListener("pointerup", clear);
-      el.addEventListener("pointercancel", clear);
-      el.addEventListener("lostpointercapture", clear);
-      el.addEventListener("pointerleave", clear);
-    };
-
-    bindBtn(this._upBtnEl, "up");
-    bindBtn(this._downBtnEl, "down");
-    bindBtn(this._leftBtnEl, "left");
-    bindBtn(this._rightBtnEl, "right");
+    this._fireBtnEl.addEventListener("pointerdown", (e) => this.#onFireDown(e));
+    this._fireBtnEl.addEventListener("pointerup", (e) => this.#onFireUp(e));
+    this._fireBtnEl.addEventListener("pointercancel", (e) => this.#onFireUp(e));
+    this._fireBtnEl.addEventListener("lostpointercapture", (e) => this.#onFireUp(e));
   }
 
   #bindTouchShootSurface() {
@@ -254,44 +237,25 @@ export class Input {
     if (!this._motionEnabled || typeof window === "undefined") return;
     if (!("DeviceOrientationEvent" in window)) return;
 
-    const onMotion = (event) => this.#onDeviceOrientation(event);
-    const requestPermission = () => {
-      const request = window.DeviceOrientationEvent?.requestPermission;
-      if (typeof request !== "function") return;
-      request.call(window.DeviceOrientationEvent)
-        .then((state) => {
-          if (state === "granted") {
-            window.addEventListener("deviceorientation", onMotion);
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener("deviceorientation", onMotion);
-    window.addEventListener("pointerdown", requestPermission, { once: true, passive: true });
+    this._motionHandler = (event) => this.#onDeviceOrientation(event);
+    if (typeof window.DeviceOrientationEvent?.requestPermission !== "function") {
+      this.#startMotionListening();
+    }
   }
 
-  #onJoyDown(e) {
-    // Solo 1 dito sul joystick
-    if (this._joystickPointerId != null) return;
-    this._joystickPointerId = e.pointerId;
-    try { this._joystickEl.setPointerCapture(e.pointerId); } catch {}
-    e.preventDefault();
-    this.#setTouchDirectionFromEvent(e);
+  #startMotionListening() {
+    if (this._motionListening || typeof window === "undefined") return;
+    if (!this._motionHandler) {
+      this._motionHandler = (event) => this.#onDeviceOrientation(event);
+    }
+    window.addEventListener("deviceorientation", this._motionHandler, { passive: true });
+    this._motionListening = true;
   }
 
-  #onJoyMove(e) {
-    if (this._joystickPointerId !== e.pointerId) return;
-    e.preventDefault();
-    this.#setTouchDirectionFromEvent(e);
-  }
-
-  #onJoyUp(e) {
-    if (this._joystickPointerId !== e.pointerId) return;
-    e.preventDefault();
-    this._joystickPointerId = null;
-    this._touch.up = this._touch.down = this._touch.left = this._touch.right = false;
-    this.#updateJoystickKnob(null);
+  #clearMotion() {
+    this._motion.dx = 0;
+    this._motion.dy = 0;
+    this._motion.active = false;
     this.#mergeState();
   }
 
@@ -314,6 +278,11 @@ export class Input {
     const gamma = Number(event.gamma);
     const beta = Number(event.beta);
     if (!Number.isFinite(gamma) || !Number.isFinite(beta)) return;
+    if (!this._motionSignalSeen) {
+      this._motionSignalSeen = true;
+      const waiters = this._motionSignalWaiters.splice(0);
+      waiters.forEach((done) => done(true));
+    }
 
     const maxTilt = 24;
     const deadzone = 5;
@@ -340,68 +309,6 @@ export class Input {
     this._motion.dy = dy;
     this._motion.active = dx !== 0 || dy !== 0;
     this.#mergeState();
-  }
-
-  #setTouchDirectionFromEvent(e) {
-    if (!this._joystickEl) return;
-    const rect = this._joystickEl.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dx = e.clientX - cx;
-    const dy = e.clientY - cy;
-
-    // Se praticamente al centro, non muovere
-    if (Math.hypot(dx, dy) < 6) {
-      this._touch.up = this._touch.down = this._touch.left = this._touch.right = false;
-      this.#updateJoystickKnob(null);
-      this.#mergeState();
-      return;
-    }
-
-    const angle = Math.atan2(dy, dx); // y positivo = down
-    const deg = (angle * 180) / Math.PI;
-
-    // Mappa su 4 direzioni (replica frecce)
-    this._touch.up = this._touch.down = this._touch.left = this._touch.right = false;
-    let dirX = 0;
-    let dirY = 0;
-    if (deg >= -45 && deg < 45) {
-      this._touch.right = true;
-      dirX = 1;
-    } else if (deg >= 45 && deg < 135) {
-      this._touch.down = true;
-      dirY = 1;
-    } else if (deg >= 135 || deg < -135) {
-      this._touch.left = true;
-      dirX = -1;
-    } else {
-      this._touch.up = true;
-      dirY = -1;
-    }
-
-    // Visual knob: snap su 4 direzioni
-    this.#updateJoystickKnob({
-      dx: dirX,
-      dy: dirY,
-      radius: Math.min(rect.width, rect.height) / 2
-    });
-    this.#mergeState();
-  }
-
-  #updateJoystickKnob(payload) {
-    if (!this._joystickKnobEl) return;
-    if (!payload) {
-      this._joystickKnobEl.style.transform = "translate(-50%, -50%)";
-      this._joystickKnobEl.classList.remove("is-active");
-      return;
-    }
-    const { dx, dy, radius } = payload;
-    const max = Math.max(1, radius - 10);
-    const m = Math.hypot(dx, dy) || 1;
-    const clampedX = (dx / m) * Math.min(max, max);
-    const clampedY = (dy / m) * Math.min(max, max);
-    this._joystickKnobEl.classList.add("is-active");
-    this._joystickKnobEl.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
   }
 
   // Merge stato (OR) tra tastiera e touch
