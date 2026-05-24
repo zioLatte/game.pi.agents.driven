@@ -27,6 +27,7 @@ const layoutEl = document.getElementById("layout");
 const gameWrapEl = document.getElementById("game-wrap");
 const arenaStartBtn = document.getElementById("arena-start-button");
 const arenaStartImg = document.getElementById("arena-start-image");
+const arenaGameoverImg = document.getElementById("arena-gameover-image");
 const gameoverOverlay = document.getElementById("gameover-overlay");
 const playAgainBtn = document.getElementById("play-again");
 const continueBtn = document.getElementById("continue-game");
@@ -99,14 +100,6 @@ let levelOnionDirection = 1;
 let pendingGameStart = true;
 let awaitingArenaStartClick = window.PICHAN_WAIT_FOR_ARENA_PLAY === true;
 let arenaStartMode = awaitingArenaStartClick ? "initial" : "hidden";
-let arenaStartAnimId = null;
-const arenaStartMotion = {
-  x: 0,
-  y: 0,
-  vx: 160,
-  vy: 112,
-  lastNow: 0
-};
 const playerDefeatState = {
   active: false,
   reviveAt: 0,
@@ -290,6 +283,9 @@ window.withAssetVersion = withAssetVersion;
 if (arenaStartImg) {
   arenaStartImg.src = withAssetVersion("./assets/collage/play.png");
 }
+if (arenaGameoverImg) {
+  arenaGameoverImg.src = withAssetVersion("./assets/collage/gameover.png");
+}
 document.querySelectorAll(".run-hud__icon").forEach((img) => {
   const src = img.getAttribute("src");
   if (src) img.src = withAssetVersion(src);
@@ -319,99 +315,20 @@ function fadeBgm(targetVolume, durationMs) {
   audio.fadeBgm(targetVolume, durationMs);
 }
 
-function getArenaStartAreaSize() {
-  const rect = gameWrapEl?.getBoundingClientRect();
-  return {
-    width: Math.max(1, rect?.width || WORLD_WIDTH || canvas.clientWidth || 1),
-    height: Math.max(1, rect?.height || WORLD_HEIGHT || canvas.clientHeight || 1)
-  };
-}
-
-function getArenaStartButtonSize() {
-  const area = getArenaStartAreaSize();
-  const rect = arenaStartBtn?.getBoundingClientRect();
-  const width = rect?.width || Math.min(area.width * 0.52, 430);
-  const height = rect?.height || width * (264 / 760);
-  return {
-    width: Math.max(1, width),
-    height: Math.max(1, height)
-  };
-}
-
-function positionArenaStartButton(x, y) {
-  if (!arenaStartBtn) return;
-  arenaStartBtn.style.left = `${Math.round(x)}px`;
-  arenaStartBtn.style.top = `${Math.round(y)}px`;
-}
-
 function centerArenaStartButton() {
   if (!arenaStartBtn) return;
   arenaStartBtn.style.left = "50%";
   arenaStartBtn.style.top = "50%";
 }
 
-function stopArenaStartMotion() {
-  if (arenaStartAnimId) {
-    cancelAnimationFrame(arenaStartAnimId);
-    arenaStartAnimId = null;
-  }
-  arenaStartMotion.lastNow = 0;
-}
-
-function tickArenaStartMotion(now) {
-  if (!awaitingArenaStartClick || arenaStartMode !== "restart") {
-    stopArenaStartMotion();
-    return;
-  }
-
-  const area = getArenaStartAreaSize();
-  const button = getArenaStartButtonSize();
-  const margin = 8;
-  const minX = button.width * 0.5 + margin;
-  const maxX = Math.max(minX, area.width - button.width * 0.5 - margin);
-  const minY = button.height * 0.5 + margin;
-  const maxY = Math.max(minY, area.height - button.height * 0.5 - margin);
-  const lastNow = arenaStartMotion.lastNow || now;
-  const dt = Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
-  arenaStartMotion.lastNow = now;
-
-  arenaStartMotion.x += arenaStartMotion.vx * dt;
-  arenaStartMotion.y += arenaStartMotion.vy * dt;
-
-  if (arenaStartMotion.x <= minX || arenaStartMotion.x >= maxX) {
-    arenaStartMotion.x = Math.max(minX, Math.min(maxX, arenaStartMotion.x));
-    arenaStartMotion.vx *= -1;
-  }
-  if (arenaStartMotion.y <= minY || arenaStartMotion.y >= maxY) {
-    arenaStartMotion.y = Math.max(minY, Math.min(maxY, arenaStartMotion.y));
-    arenaStartMotion.vy *= -1;
-  }
-
-  positionArenaStartButton(arenaStartMotion.x, arenaStartMotion.y);
-  arenaStartAnimId = requestAnimationFrame(tickArenaStartMotion);
-}
-
-function startArenaStartMotion(now = performance.now()) {
-  const area = getArenaStartAreaSize();
-  arenaStartMotion.x = area.width * 0.28;
-  arenaStartMotion.y = area.height * 0.34;
-  arenaStartMotion.vx = Math.max(95, area.width * 0.19);
-  arenaStartMotion.vy = Math.max(82, area.height * 0.23);
-  arenaStartMotion.lastNow = now;
-  positionArenaStartButton(arenaStartMotion.x, arenaStartMotion.y);
-  if (!arenaStartAnimId) {
-    arenaStartAnimId = requestAnimationFrame(tickArenaStartMotion);
-  }
-}
-
 function setArenaStartVisible(next) {
   if (!arenaStartBtn) return;
+  const isRestart = arenaStartMode === "restart";
   arenaStartBtn.classList.toggle("is-visible", Boolean(next));
+  arenaStartBtn.classList.toggle("is-restart", Boolean(next && isRestart));
   arenaStartBtn.setAttribute("aria-hidden", next ? "false" : "true");
   arenaStartBtn.tabIndex = next ? 0 : -1;
-  if (!next) {
-    stopArenaStartMotion();
-  } else if (arenaStartMode !== "restart") {
+  if (next) {
     centerArenaStartButton();
   }
 }
@@ -447,7 +364,6 @@ function startEngineIfReady() {
     setArenaStartVisible(true);
     if (arenaStartMode === "restart") {
       drawArenaOnly();
-      startArenaStartMotion();
     } else {
       drawArenaStartPreview();
     }
@@ -467,7 +383,7 @@ function startEngineIfReady() {
   updatePlayersPanelVisibility();
 }
 
-function startFromArenaPlay() {
+function startFromArenaPlay(event) {
   if (!awaitingArenaStartClick) return;
   const wasRestart = arenaStartMode === "restart";
   awaitingArenaStartClick = false;
@@ -477,6 +393,7 @@ function startFromArenaPlay() {
   if (wasRestart) {
     stopLevelupSfx();
   }
+  input.clearShoot?.();
   startBgmOnce();
   startEngineIfReady();
 }
@@ -678,7 +595,6 @@ function applyWorldResize() {
   if (awaitingArenaStartClick) {
     if (arenaStartMode === "restart") {
       drawArenaOnly();
-      startArenaStartMotion();
     } else {
       drawArenaStartPreview();
     }
@@ -700,10 +616,16 @@ window.addEventListener("resize", () => {
 // INPUT + LEVEL MANAGEMENT
 // ----------------------------------------------------------
 const touchEnabled = isTouchDevice();
+const motionTouchEnabled = touchEnabled && isMobileDevice();
 if (touchEnabled) {
   document.body.classList.add("is-touch");
-  if (touchControlsEl) {
+  if (motionTouchEnabled) {
+    document.body.classList.add("is-motion-touch");
+  }
+  if (touchControlsEl && !motionTouchEnabled) {
     touchControlsEl.setAttribute("aria-hidden", "false");
+  } else if (touchControlsEl) {
+    touchControlsEl.setAttribute("aria-hidden", "true");
   }
   if (mobileWarningEl) {
     mobileWarningEl.classList.remove("visible");
@@ -720,11 +642,14 @@ window.BULLET_BASE_SPEED = window.PLAYER_BASE_SPEED * window.BULLET_SPEED_FACTOR
 updateSpriteScale();
 
 const input = new Input({
-  fireBtnEl: touchEnabled ? touchFireBtnEl : null,
-  upBtnEl: touchEnabled ? touchUpBtnEl : null,
-  downBtnEl: touchEnabled ? touchDownBtnEl : null,
-  leftBtnEl: touchEnabled ? touchLeftBtnEl : null,
-  rightBtnEl: touchEnabled ? touchRightBtnEl : null
+  fireBtnEl: touchEnabled && !motionTouchEnabled ? touchFireBtnEl : null,
+  upBtnEl: touchEnabled && !motionTouchEnabled ? touchUpBtnEl : null,
+  downBtnEl: touchEnabled && !motionTouchEnabled ? touchDownBtnEl : null,
+  leftBtnEl: touchEnabled && !motionTouchEnabled ? touchLeftBtnEl : null,
+  rightBtnEl: touchEnabled && !motionTouchEnabled ? touchRightBtnEl : null,
+  motionEnabled: motionTouchEnabled,
+  touchShootSurfaceEl: motionTouchEnabled ? document : null,
+  ignoreTouchShootSelector: "#arena-start-button, button, input, textarea, select, a"
 });
 const levelConfigResponse = await fetch(withAssetVersion("./config/levels.json"));
 const levelConfig = await levelConfigResponse.json();
@@ -938,7 +863,6 @@ function beginArenaRestart(now = performance.now()) {
   screenFx.flashAlpha = 0;
   drawArenaOnly(now);
   setArenaStartVisible(true);
-  startArenaStartMotion(now);
   playLevelupSfx();
   engine.stop();
 }
@@ -1880,7 +1804,6 @@ function update(dt, now) {
   if (awaitingArenaStartClick) {
     if (arenaStartMode === "restart") {
       drawArenaOnly();
-      startArenaStartMotion();
     } else {
       drawArenaStartPreview();
     }
@@ -2067,6 +1990,7 @@ const ASSET_IMAGES = [
   "./assets/collage/player_down.png",
   "./assets/collage/player_defeated.png",
   "./assets/collage/play.png",
+  "./assets/collage/gameover.png",
   "./assets/collage/onion_idle.png",
   "./assets/collage/onion_chase.png",
   "./assets/collage/onion_defeated.png",
@@ -2105,6 +2029,11 @@ startEngineIfReady();
 // RESET — tasto R
 // ----------------------------------------------------------
 window.addEventListener("keydown", (e) => {
+  if (awaitingArenaStartClick) {
+    e.preventDefault();
+    startFromArenaPlay(e);
+    return;
+  }
   startBgmOnce();
   if (e.key === "r" || e.key === "R") {
     resetGame(1);
@@ -2117,11 +2046,20 @@ window.addEventListener("keydown", (e) => {
 
 });
 
-window.addEventListener("pointerdown", () => {
+window.addEventListener("pointerdown", (event) => {
+  if (awaitingArenaStartClick && touchEnabled && event.pointerType === "touch") {
+    startFromArenaPlay(event);
+    return;
+  }
   startBgmOnce();
 });
 
 if (arenaStartBtn) {
+  arenaStartBtn.addEventListener("keydown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startFromArenaPlay(event);
+  });
   arenaStartBtn.addEventListener("click", startFromArenaPlay);
 }
 

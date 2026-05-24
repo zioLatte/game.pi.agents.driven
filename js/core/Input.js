@@ -6,6 +6,7 @@
 // ----------------------------------------------------------
 // • Tastiera: WASD + frecce + spazio
 // • Touch: joystick top-down (solo direzione) + bottone SPARA
+// • Motion: tilt dispositivo su smartphone
 //
 // CONTRATTO PUBBLICO
 // ----------------------------------------------------------
@@ -17,6 +18,7 @@
 // • Touch joystick replica semanticamente le frecce: niente diagonali.
 // • Distanza dal centro NON conta: serve solo l'angolo.
 // • SPARA su mobile è solo tap (shootPressed), nessun autofire.
+// • Motion produce un asse analogico normalizzato con deadzone.
 //
 
 export class Input {
@@ -28,12 +30,16 @@ export class Input {
       upBtnEl = null,
       downBtnEl = null,
       leftBtnEl = null,
-      rightBtnEl = null
+      rightBtnEl = null,
+      motionEnabled = false,
+      touchShootSurfaceEl = null,
+      ignoreTouchShootSelector = ""
     } = options;
 
     // Stato sorgenti separate (merge con OR)
     this._kb = { up: false, down: false, left: false, right: false, shoot: false };
     this._touch = { up: false, down: false, left: false, right: false };
+    this._motion = { dx: 0, dy: 0, active: false };
 
     // Touch internals
     this._joystickEl = joystickEl;
@@ -43,8 +49,12 @@ export class Input {
     this._downBtnEl = downBtnEl;
     this._leftBtnEl = leftBtnEl;
     this._rightBtnEl = rightBtnEl;
+    this._motionEnabled = Boolean(motionEnabled);
+    this._touchShootSurfaceEl = touchShootSurfaceEl;
+    this._ignoreTouchShootSelector = ignoreTouchShootSelector;
     this._joystickPointerId = null;
     this._firePointerId = null;
+    this._touchShootPointerIds = new Set();
     this._shootTapQueued = false;
     this._shootPressedFrame = false;
     this._moveVector = { dx: 0, dy: 0, shootHeld: false };
@@ -56,6 +66,8 @@ export class Input {
     // Touch (Pointer Events)
     this.#bindTouch();
     this.#bindDpad();
+    this.#bindMotion();
+    this.#bindTouchShootSurface();
   }
 
   // Chiamare a inizio frame (Engine.update)
@@ -79,6 +91,11 @@ export class Input {
     const pressed = this._shootPressedFrame;
     this._shootPressedFrame = false;
     return pressed;
+  }
+
+  clearShoot() {
+    this._shootTapQueued = false;
+    this._shootPressedFrame = false;
   }
 
   // ----------------------------------------------------------
@@ -210,6 +227,50 @@ export class Input {
     bindBtn(this._rightBtnEl, "right");
   }
 
+  #bindTouchShootSurface() {
+    const surface = this._touchShootSurfaceEl;
+    if (!surface) return;
+
+    surface.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") return;
+      if (this.#shouldIgnoreTouchShoot(e.target)) return;
+      this._touchShootPointerIds.add(e.pointerId);
+      this._shootTapQueued = true;
+    }, { passive: true });
+
+    const clear = (e) => {
+      this._touchShootPointerIds.delete(e.pointerId);
+    };
+    surface.addEventListener("pointerup", clear, { passive: true });
+    surface.addEventListener("pointercancel", clear, { passive: true });
+  }
+
+  #shouldIgnoreTouchShoot(target) {
+    if (!this._ignoreTouchShootSelector || !target?.closest) return false;
+    return Boolean(target.closest(this._ignoreTouchShootSelector));
+  }
+
+  #bindMotion() {
+    if (!this._motionEnabled || typeof window === "undefined") return;
+    if (!("DeviceOrientationEvent" in window)) return;
+
+    const onMotion = (event) => this.#onDeviceOrientation(event);
+    const requestPermission = () => {
+      const request = window.DeviceOrientationEvent?.requestPermission;
+      if (typeof request !== "function") return;
+      request.call(window.DeviceOrientationEvent)
+        .then((state) => {
+          if (state === "granted") {
+            window.addEventListener("deviceorientation", onMotion);
+          }
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener("deviceorientation", onMotion);
+    window.addEventListener("pointerdown", requestPermission, { once: true, passive: true });
+  }
+
   #onJoyDown(e) {
     // Solo 1 dito sul joystick
     if (this._joystickPointerId != null) return;
@@ -247,6 +308,38 @@ export class Input {
     if (this._firePointerId !== e.pointerId) return;
     e.preventDefault();
     this._firePointerId = null;
+  }
+
+  #onDeviceOrientation(event) {
+    const gamma = Number(event.gamma);
+    const beta = Number(event.beta);
+    if (!Number.isFinite(gamma) || !Number.isFinite(beta)) return;
+
+    const maxTilt = 24;
+    const deadzone = 5;
+    const normalize = (value) => {
+      const magnitude = Math.abs(value);
+      if (magnitude < deadzone) return 0;
+      const sign = Math.sign(value);
+      return sign * Math.min(1, (magnitude - deadzone) / (maxTilt - deadzone));
+    };
+
+    let dx = normalize(gamma);
+    let dy = normalize(beta);
+    const angle = Number(window.orientation ?? screen.orientation?.angle ?? 0);
+    if (angle === 90) {
+      [dx, dy] = [-dy, dx];
+    } else if (angle === -90 || angle === 270) {
+      [dx, dy] = [dy, -dx];
+    } else if (Math.abs(angle) === 180) {
+      dx *= -1;
+      dy *= -1;
+    }
+
+    this._motion.dx = dx;
+    this._motion.dy = dy;
+    this._motion.active = dx !== 0 || dy !== 0;
+    this.#mergeState();
   }
 
   #setTouchDirectionFromEvent(e) {
@@ -320,7 +413,15 @@ export class Input {
 
     let dx = 0;
     let dy = 0;
-    if (up) { dy = -1; }
+    if (this._motion.active) {
+      dx = this._motion.dx;
+      dy = this._motion.dy;
+      const magnitude = Math.hypot(dx, dy);
+      if (magnitude > 1) {
+        dx /= magnitude;
+        dy /= magnitude;
+      }
+    } else if (up) { dy = -1; }
     else if (down) { dy = 1; }
     else if (left) { dx = -1; }
     else if (right) { dx = 1; }

@@ -107,7 +107,8 @@
       <!-- MUST: dimensioni interne del canvas (vero buffer grafico) -->
       <canvas id="game" width="614" height="614"></canvas>
       <button id="arena-start-button" class="arena-start-button" type="button" aria-label="Play">
-        <img id="arena-start-image" src="assets/collage/play.png" alt="Play">
+        <img id="arena-gameover-image" class="arena-gameover-image" src="assets/collage/gameover.png" alt="Game Over">
+        <img id="arena-start-image" class="arena-play-image" src="assets/collage/play.png" alt="Play">
       </button>
     </div>
     <aside id="run-hud" class="run-hud" aria-label="Run status">
@@ -146,7 +147,7 @@
   </div>
 
   <script>
-    window.BUILD_VERSION = "2026.05.24.5-compact-hud";
+    window.BUILD_VERSION = "2026.05.24.6-gameover-asset";
     const loaderScript = document.createElement("script");
     loaderScript.type = "module";
     loaderScript.src = `js/loader.js?v=${encodeURIComponent(window.BUILD_VERSION)}`;

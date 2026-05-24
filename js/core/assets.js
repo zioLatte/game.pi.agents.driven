@@ -8,6 +8,7 @@ export const ARENA_ASSET_MANIFEST = [
   { id: "sprites.pichanRight", path: "./assets/collage/player_right.png" },
   { id: "sprites.pichanDefeated", path: "./assets/collage/player_defeated.png" },
   { id: "ui.play", path: "./assets/collage/play.png" },
+  { id: "ui.gameover", path: "./assets/collage/gameover.png" },
   { id: "sprites.onionIdle", path: "./assets/collage/onion_idle.png" },
   { id: "sprites.onionChase", path: "./assets/collage/onion_chase.png" },
   { id: "sprites.onionDefeated", path: "./assets/collage/onion_defeated.png" },
