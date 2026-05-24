@@ -74,9 +74,14 @@ export class Bullet {
     this.prevX = this.x;
     this.prevY = this.y;
 
-    this.trail.unshift({ x: this.x, y: this.y, fade: this.fade, life: this.life });
-    if (this.trail.length > this.maxTrail) {
-      this.trail.length = this.maxTrail;
+    const perfOptions = typeof window !== "undefined" ? window.PICHAN_PERF_OPTIONS : null;
+    if (perfOptions?.bulletTrail === false) {
+      this.trail.length = 0;
+    } else {
+      this.trail.unshift({ x: this.x, y: this.y, fade: this.fade, life: this.life });
+      if (this.trail.length > this.maxTrail) {
+        this.trail.length = this.maxTrail;
+      }
     }
 
     this.x += this.vx * dt;
@@ -135,21 +140,24 @@ export class Bullet {
     const ctx = this.ctx;
 
     ctx.save();
-    for (let i = this.trail.length - 1; i >= 0; i -= 1) {
-      const point = this.trail[i];
-      const t = 1 - (i / Math.max(1, this.trail.length));
-      const alpha = this.fade * t * 0.18;
-      const radius = Math.max(1.2, this.r * (0.4 + t * 0.7));
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#ffd36a';
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-      ctx.fill();
+    const perfOptions = typeof window !== "undefined" ? window.PICHAN_PERF_OPTIONS : null;
+    if (perfOptions?.bulletTrail !== false) {
+      for (let i = this.trail.length - 1; i >= 0; i -= 1) {
+        const point = this.trail[i];
+        const t = 1 - (i / Math.max(1, this.trail.length));
+        const alpha = this.fade * t * 0.18;
+        const radius = Math.max(1.2, this.r * (0.4 + t * 0.7));
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#ffd36a';
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     ctx.globalAlpha = this.fade;
     ctx.shadowColor = 'rgba(255, 230, 160, 0.95)';
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = perfOptions?.bulletShadowBlur === false ? 0 : 14;
     ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.r + 0.8, 0, Math.PI * 2);

@@ -452,7 +452,6 @@ export class Onion {
       : (this.state === ONION_STATE.CHASE_PICHAN
         ? renderAssets?.getImage?.("sprites.onionChase")
         : renderAssets?.getImage?.("sprites.onionIdle"));
-    const boostRingSprite = renderAssets?.getImage?.("sprites.boostRing") || null;
     const scoreStarSprite = renderAssets?.getImage?.("sprites.scoreStar") || null;
     ctx.save();
     const inChase = this.state === ONION_STATE.CHASE_PICHAN;
@@ -470,6 +469,29 @@ export class Onion {
     const glowAlpha = inChase ? 0.65 : 0.24;
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
+
+    let boostRingRadius = 0;
+    let boostRemainingRatio = 0;
+    if (boosted) {
+      const pulse = 0.5 + 0.5 * Math.sin(frameNow / 90 + this.surgeOffset);
+      boostRemainingRatio = this.getSpeedBoostRemainingRatio(frameNow);
+      boostRingRadius = (this.r * 1.18 + pulse * 2) * spriteScale;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.2;
+      ctx.fillStyle = "rgba(255, 235, 85, 0.58)";
+      ctx.beginPath();
+      ctx.ellipse(0, size * 0.12, boostRingRadius * 1.08, boostRingRadius * 0.82, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = alpha * 0.55;
+      ctx.strokeStyle = "rgba(255, 245, 160, 0.9)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, boostRingRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     const fallbackSprite = this.dying && this.spriteDefeated.loaded
       ? this.spriteDefeated.img
@@ -505,22 +527,6 @@ export class Onion {
     }
 
     if (boosted) {
-      const pulse = 0.5 + 0.5 * Math.sin(frameNow / 90 + this.surgeOffset);
-      const remainingRatio = this.getSpeedBoostRemainingRatio(frameNow);
-      const ringRadius = this.r * 1.18 + pulse * 2;
-      if (boostRingSprite) {
-        const ringSize = ringRadius * 2.35;
-        ctx.globalAlpha = alpha * 0.74;
-        ctx.drawImage(boostRingSprite, -ringSize * 0.5, -ringSize * 0.5, ringSize, ringSize);
-      } else {
-        ctx.globalAlpha = alpha * 0.18;
-        ctx.strokeStyle = "rgba(255, 247, 180, 0.75)";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
       ctx.globalAlpha = alpha * 0.78;
       ctx.strokeStyle = "rgba(255, 235, 85, 0.95)";
       ctx.lineWidth = 4;
@@ -528,9 +534,9 @@ export class Onion {
       ctx.arc(
         0,
         0,
-        ringRadius,
+        boostRingRadius,
         -Math.PI / 2,
-        -Math.PI / 2 + Math.PI * 2 * remainingRatio
+        -Math.PI / 2 + Math.PI * 2 * boostRemainingRatio
       );
       ctx.stroke();
     }
@@ -540,6 +546,55 @@ export class Onion {
     ctx.beginPath();
     ctx.ellipse(0, size * 0.42, size * 0.24, size * 0.12, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.restore();
+  }
+
+  drawDefeatedOverlay(ctx, now) {
+    if (!ctx || !this.alive || !this.dying) return;
+
+    const frameNow = now ?? performance.now();
+    const renderAssets = typeof window !== "undefined" ? window.PICHAN_RENDER_ASSETS : null;
+    const defeatedSprite = renderAssets?.getImage?.("sprites.onionDefeated")
+      || (this.spriteDefeated.loaded ? this.spriteDefeated.img : null);
+    const scoreStarSprite = renderAssets?.getImage?.("sprites.scoreStar") || null;
+    const spriteScale = (typeof window !== "undefined" && window.SPRITE_SCALE) ? window.SPRITE_SCALE : 1;
+    const t = this.fadeDuration > 0
+      ? Math.max(0, Math.min(1, this.fadeTimer / this.fadeDuration))
+      : 1;
+    const pop = 1 + Math.max(0, 1 - t) * 0.16;
+    const alpha = Math.max(0, Math.min(1, 1 - t * 0.82));
+    const size = Math.round(this.r * 3.02 * this.drawScale * spriteScale * pop);
+    const ringRadius = this.r * (1.06 + t * 0.42) * spriteScale;
+    const lift = this.r * (0.38 + t * 0.18) * spriteScale;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.visualAngle * 0.35);
+
+    ctx.globalAlpha = alpha * 0.62;
+    ctx.strokeStyle = "rgba(255, 238, 150, 0.92)";
+    ctx.lineWidth = Math.max(2, 4 * (1 - t));
+    ctx.beginPath();
+    ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (defeatedSprite) {
+      ctx.globalAlpha = alpha;
+      ctx.shadowColor = "rgba(255, 245, 190, 0.72)";
+      ctx.shadowBlur = 8 * (1 - t);
+      ctx.drawImage(defeatedSprite, -size / 2, -size / 2, size, size);
+    }
+
+    if (scoreStarSprite) {
+      const starSize = size * 0.36;
+      const bob = Math.sin(frameNow / 85 + this.surgeOffset) * 1.2;
+      ctx.globalAlpha = alpha * 0.95;
+      ctx.shadowColor = "rgba(255, 236, 120, 0.72)";
+      ctx.shadowBlur = 6;
+      ctx.rotate(-this.visualAngle * 0.35);
+      ctx.drawImage(scoreStarSprite, size * 0.16, -lift - starSize * 0.52 + bob, starSize, starSize);
+    }
 
     ctx.restore();
   }

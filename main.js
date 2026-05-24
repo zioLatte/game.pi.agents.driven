@@ -25,6 +25,8 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const layoutEl = document.getElementById("layout");
 const gameWrapEl = document.getElementById("game-wrap");
+const arenaStartBtn = document.getElementById("arena-start-button");
+const arenaStartImg = document.getElementById("arena-start-image");
 const gameoverOverlay = document.getElementById("gameover-overlay");
 const playAgainBtn = document.getElementById("play-again");
 const continueBtn = document.getElementById("continue-game");
@@ -70,6 +72,8 @@ const LEVEL_TOAST_DURATION_MS = 1300;
 const LEVELUP_SFX_FADE_DELAY_MS = 900;
 const LEVELUP_SFX_FADE_MS = 350;
 const MAX_CONTINUES = 3;
+const PLAYER_DEFEATED_STANDBY_MS = 2000;
+const PLAYER_REVIVE_GRACE_MS = 1200;
 let levelOverlayTimeoutId = null;
 let levelToastTimeoutId = null;
 let levelupSfxFadeTimeoutId = null;
@@ -94,6 +98,23 @@ let startPending = false;
 let levelOnionAnimHandler = null;
 let levelOnionDirection = 1;
 let pendingGameStart = true;
+let awaitingArenaStartClick = window.PICHAN_WAIT_FOR_ARENA_PLAY === true;
+let arenaStartMode = awaitingArenaStartClick ? "initial" : "hidden";
+let arenaStartAnimId = null;
+const arenaStartMotion = {
+  x: 0,
+  y: 0,
+  vx: 160,
+  vy: 112,
+  lastNow: 0
+};
+const playerDefeatState = {
+  active: false,
+  reviveAt: 0,
+  reviveGraceUntil: 0,
+  x: 0,
+  y: 0
+};
 const onlineService = createOnlineService();
 const STATS_KEYS = {
   games: "pi_games_played",
@@ -112,6 +133,19 @@ const screenFx = {
   flashAlpha: 0,
   flashColor: "rgba(255,255,255,1)"
 };
+const PERF_MODE = new URLSearchParams(window.location.search).get("perf") === "1";
+const PERF_OPTIONS = {
+  bulletTrail: !PERF_MODE,
+  bulletShadowBlur: !PERF_MODE,
+  explosionSparkScale: PERF_MODE ? 0.35 : 1,
+  explosionShadowBlur: !PERF_MODE,
+  canvasShellFilter: !PERF_MODE
+};
+window.PICHAN_PERF_MODE = PERF_MODE;
+window.PICHAN_PERF_OPTIONS = PERF_OPTIONS;
+if (PERF_MODE) {
+  document.body.classList.add("perf-mode");
+}
 
 function addScreenShake(amount = 0.08) {
   screenFx.trauma = Math.min(1, screenFx.trauma + Math.max(0, amount));
@@ -175,16 +209,18 @@ function resolveSpeedDotPickup(now) {
 function drawSpeedDot(ctx, dot, now) {
   if (!dot) return;
   const pulse = 0.5 + 0.5 * Math.sin((now || 0) / 130);
-  const scale = 1 + pulse * 0.08;
-  const size = dot.r * 2.9;
+  const scale = 1 + pulse * 0.04;
+  const size = Math.max(42, dot.r * 4.2);
   const boltImage = getRenderAssetImage("sprites.speedBolt");
 
   ctx.save();
   ctx.translate(dot.x, dot.y);
   ctx.scale(scale, scale);
-  ctx.globalCompositeOperation = "lighter";
-  ctx.shadowColor = "rgba(255, 232, 80, 0.9)";
-  ctx.shadowBlur = 12 + pulse * 5;
+
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.shadowColor = "rgba(255, 232, 80, 0.58)";
+  ctx.shadowBlur = 5 + pulse * 2;
   if (boltImage) {
     ctx.drawImage(boltImage, -size * 0.62, -size * 0.72, size * 1.24, size * 1.44);
   } else {
@@ -205,20 +241,6 @@ function drawSpeedDot(ctx, dot, now) {
     ctx.strokeStyle = "rgba(40, 35, 12, 0.86)";
     ctx.stroke();
   }
-
-  ctx.globalAlpha = 0.42 + pulse * 0.2;
-  ctx.strokeStyle = "rgba(255, 255, 210, 0.86)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.58, 0);
-  ctx.lineTo(-size * 0.78, 0);
-  ctx.moveTo(size * 0.58, 0);
-  ctx.lineTo(size * 0.78, 0);
-  ctx.moveTo(0, -size * 0.72);
-  ctx.lineTo(0, -size * 0.92);
-  ctx.moveTo(0, size * 0.72);
-  ctx.lineTo(0, size * 0.92);
-  ctx.stroke();
 
   ctx.restore();
 }
@@ -266,6 +288,9 @@ function withAssetVersion(path) {
 }
 
 window.withAssetVersion = withAssetVersion;
+if (arenaStartImg) {
+  arenaStartImg.src = withAssetVersion("./assets/collage/play.png");
+}
 
 function getRenderAssetImage(id) {
   return renderAssets.getImage(id);
@@ -291,13 +316,143 @@ function fadeBgm(targetVolume, durationMs) {
   audio.fadeBgm(targetVolume, durationMs);
 }
 
+function getArenaStartAreaSize() {
+  const rect = gameWrapEl?.getBoundingClientRect();
+  return {
+    width: Math.max(1, rect?.width || WORLD_WIDTH || canvas.clientWidth || 1),
+    height: Math.max(1, rect?.height || WORLD_HEIGHT || canvas.clientHeight || 1)
+  };
+}
+
+function getArenaStartButtonSize() {
+  const area = getArenaStartAreaSize();
+  const rect = arenaStartBtn?.getBoundingClientRect();
+  const width = rect?.width || Math.min(area.width * 0.52, 430);
+  const height = rect?.height || width * (264 / 760);
+  return {
+    width: Math.max(1, width),
+    height: Math.max(1, height)
+  };
+}
+
+function positionArenaStartButton(x, y) {
+  if (!arenaStartBtn) return;
+  arenaStartBtn.style.left = `${Math.round(x)}px`;
+  arenaStartBtn.style.top = `${Math.round(y)}px`;
+}
+
+function centerArenaStartButton() {
+  if (!arenaStartBtn) return;
+  arenaStartBtn.style.left = "50%";
+  arenaStartBtn.style.top = "50%";
+}
+
+function stopArenaStartMotion() {
+  if (arenaStartAnimId) {
+    cancelAnimationFrame(arenaStartAnimId);
+    arenaStartAnimId = null;
+  }
+  arenaStartMotion.lastNow = 0;
+}
+
+function tickArenaStartMotion(now) {
+  if (!awaitingArenaStartClick || arenaStartMode !== "restart") {
+    stopArenaStartMotion();
+    return;
+  }
+
+  const area = getArenaStartAreaSize();
+  const button = getArenaStartButtonSize();
+  const margin = 8;
+  const minX = button.width * 0.5 + margin;
+  const maxX = Math.max(minX, area.width - button.width * 0.5 - margin);
+  const minY = button.height * 0.5 + margin;
+  const maxY = Math.max(minY, area.height - button.height * 0.5 - margin);
+  const lastNow = arenaStartMotion.lastNow || now;
+  const dt = Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
+  arenaStartMotion.lastNow = now;
+
+  arenaStartMotion.x += arenaStartMotion.vx * dt;
+  arenaStartMotion.y += arenaStartMotion.vy * dt;
+
+  if (arenaStartMotion.x <= minX || arenaStartMotion.x >= maxX) {
+    arenaStartMotion.x = Math.max(minX, Math.min(maxX, arenaStartMotion.x));
+    arenaStartMotion.vx *= -1;
+  }
+  if (arenaStartMotion.y <= minY || arenaStartMotion.y >= maxY) {
+    arenaStartMotion.y = Math.max(minY, Math.min(maxY, arenaStartMotion.y));
+    arenaStartMotion.vy *= -1;
+  }
+
+  positionArenaStartButton(arenaStartMotion.x, arenaStartMotion.y);
+  arenaStartAnimId = requestAnimationFrame(tickArenaStartMotion);
+}
+
+function startArenaStartMotion(now = performance.now()) {
+  const area = getArenaStartAreaSize();
+  arenaStartMotion.x = area.width * 0.28;
+  arenaStartMotion.y = area.height * 0.34;
+  arenaStartMotion.vx = Math.max(95, area.width * 0.19);
+  arenaStartMotion.vy = Math.max(82, area.height * 0.23);
+  arenaStartMotion.lastNow = now;
+  positionArenaStartButton(arenaStartMotion.x, arenaStartMotion.y);
+  if (!arenaStartAnimId) {
+    arenaStartAnimId = requestAnimationFrame(tickArenaStartMotion);
+  }
+}
+
+function setArenaStartVisible(next) {
+  if (!arenaStartBtn) return;
+  arenaStartBtn.classList.toggle("is-visible", Boolean(next));
+  arenaStartBtn.setAttribute("aria-hidden", next ? "false" : "true");
+  arenaStartBtn.tabIndex = next ? 0 : -1;
+  if (!next) {
+    stopArenaStartMotion();
+  } else if (arenaStartMode !== "restart") {
+    centerArenaStartButton();
+  }
+}
+
+function drawArenaStartPreview() {
+  updateRunHud();
+  updatePlayersPanelVisibility();
+  draw(performance.now());
+}
+
+function drawArenaOnly(now = performance.now()) {
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+  const arena = levelManager.arena;
+  const staticLayer = getStaticRenderLayer(arena);
+  if (staticLayer?.canvas) {
+    ctx.drawImage(staticLayer.canvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+  } else {
+    drawOutsideTerrain(ctx);
+  }
+}
+
 function startEngineIfReady() {
   if (!assetsLoaded) {
     startPending = true;
     return;
   }
+  if (awaitingArenaStartClick) {
+    startPending = false;
+    setArenaStartVisible(true);
+    if (arenaStartMode === "restart") {
+      drawArenaOnly();
+      startArenaStartMotion();
+    } else {
+      drawArenaStartPreview();
+    }
+    return;
+  }
   if (engine.running) return;
   startPending = false;
+  setArenaStartVisible(false);
   if (pendingGameStart) {
     pendingGameStart = false;
     stats.games += 1;
@@ -307,6 +462,20 @@ function startEngineIfReady() {
   engine.start();
   updateRunHud();
   updatePlayersPanelVisibility();
+}
+
+function startFromArenaPlay() {
+  if (!awaitingArenaStartClick) return;
+  const wasRestart = arenaStartMode === "restart";
+  awaitingArenaStartClick = false;
+  arenaStartMode = "hidden";
+  window.PICHAN_WAIT_FOR_ARENA_PLAY = false;
+  setArenaStartVisible(false);
+  if (wasRestart) {
+    stopLevelupSfx();
+  }
+  startBgmOnce();
+  startEngineIfReady();
 }
 
 function stopBgm() {
@@ -341,6 +510,10 @@ function playLevelupSfx() {
 
 function fadeLevelupSfx(durationMs) {
   audio.fadeLevelupSfx(durationMs);
+}
+
+function stopLevelupSfx() {
+  audio.stopLevelupSfx();
 }
 
 function syncMaxLevelStat() {
@@ -396,14 +569,39 @@ function formatHudRatio(value) {
   return Math.max(0, Math.min(1, numericValue));
 }
 
-function updateRunHud() {
+const runHudLastState = {
+  level: null,
+  onions: null,
+  waveText: null,
+  waveBarTransform: null
+};
+
+function updateRunHud({ force = false } = {}) {
   const progress = levelManager.getWaveProgress();
   const progressRatio = formatHudRatio(progress.progressRatio);
+  const nextState = {
+    level: String(progress.currentLevel),
+    onions: `${progress.activePressureCount} / ${progress.maxAliveOnions}`,
+    waveText: `${progress.clearedOnions} / ${progress.totalOnions}`,
+    waveBarTransform: `scaleX(${progressRatio})`
+  };
 
-  if (runHudLevelEl) runHudLevelEl.textContent = String(progress.currentLevel);
-  if (runHudOnionsEl) runHudOnionsEl.textContent = `${progress.activePressureCount} / ${progress.maxAliveOnions}`;
-  if (runHudWaveTextEl) runHudWaveTextEl.textContent = `${progress.clearedOnions} / ${progress.totalOnions}`;
-  if (runHudWaveBarEl) runHudWaveBarEl.style.transform = `scaleX(${progressRatio})`;
+  if (runHudLevelEl && (force || runHudLastState.level !== nextState.level)) {
+    runHudLevelEl.textContent = nextState.level;
+    runHudLastState.level = nextState.level;
+  }
+  if (runHudOnionsEl && (force || runHudLastState.onions !== nextState.onions)) {
+    runHudOnionsEl.textContent = nextState.onions;
+    runHudLastState.onions = nextState.onions;
+  }
+  if (runHudWaveTextEl && (force || runHudLastState.waveText !== nextState.waveText)) {
+    runHudWaveTextEl.textContent = nextState.waveText;
+    runHudLastState.waveText = nextState.waveText;
+  }
+  if (runHudWaveBarEl && (force || runHudLastState.waveBarTransform !== nextState.waveBarTransform)) {
+    runHudWaveBarEl.style.transform = nextState.waveBarTransform;
+    runHudLastState.waveBarTransform = nextState.waveBarTransform;
+  }
 }
 
 function stopAllAudio() {
@@ -419,13 +617,9 @@ const SPRITE_BASE_SIZE = 614;
 
 function updateSpriteScale() {
   if (!window) return;
-  if (!touchEnabled) {
-    window.SPRITE_SCALE = 1;
-    return;
-  }
   const minDim = Math.min(WORLD_WIDTH, WORLD_HEIGHT);
   const rawScale = minDim / SPRITE_BASE_SIZE;
-  const clamped = Math.max(0.6, Math.min(1.2, rawScale));
+  const clamped = Math.max(0.58, Math.min(1.24, rawScale));
   window.SPRITE_SCALE = clamped;
 }
 
@@ -447,6 +641,7 @@ function applyWorldResize() {
   updateWorldSize();
   updateSpriteScale();
   backgroundCanvas = buildBackground(WORLD_WIDTH, WORLD_HEIGHT);
+  invalidateStaticRenderLayer();
 
   if (levelManager) {
     levelManager.worldWidth = WORLD_WIDTH;
@@ -490,6 +685,14 @@ function applyWorldResize() {
   }
 
   updatePlayersPanelAlignment();
+  if (awaitingArenaStartClick) {
+    if (arenaStartMode === "restart") {
+      drawArenaOnly();
+      startArenaStartMotion();
+    } else {
+      drawArenaStartPreview();
+    }
+  }
 }
 
 window.addEventListener("resize", () => {
@@ -659,18 +862,112 @@ let onions = levelManager.getOnions();
 // ----------------------------------------------------------
 state.reset();
 pendingGameStart = true;
-updateRunHud();
+updateRunHud({ force: true });
 
 function resetGame(level = 1, resetState = true, options = {}) {
+  playerDefeatState.active = false;
+  playerDefeatState.reviveAt = 0;
+  playerDefeatState.reviveGraceUntil = 0;
   levelManager.loadLevel(level, {
     playerStartPosition: options?.playerStartPosition ?? null
   });
+  invalidateStaticRenderLayer();
   player = levelManager.getPlayer();
   onions = levelManager.getOnions();
+  player.setDefeated?.(false);
+  player.setReviveGraceUntil?.(0);
   player.bulletMaxBounces = levelManager.getBulletBounceCount(level);
   if (resetState) state.reset();
   if (resetState) pendingGameStart = true;
-  updateRunHud();
+  updateRunHud({ force: true });
+}
+
+function isPlayerDefeated() {
+  return playerDefeatState.active || Boolean(player?.defeated);
+}
+
+function isPlayerVulnerable(now) {
+  const frameNow = Number.isFinite(now) ? now : performance.now();
+  return !isPlayerDefeated() && frameNow >= playerDefeatState.reviveGraceUntil;
+}
+
+function beginPlayerDefeat(now) {
+  if (!player || playerDefeatState.active) return true;
+
+  if (continueUses >= MAX_CONTINUES) {
+    beginArenaRestart(now);
+    return false;
+  }
+
+  const frameNow = Number.isFinite(now) ? now : performance.now();
+  continueUses += 1;
+  updateContinueButton();
+
+  playerDefeatState.active = true;
+  playerDefeatState.reviveAt = frameNow + PLAYER_DEFEATED_STANDBY_MS;
+  playerDefeatState.reviveGraceUntil = 0;
+  playerDefeatState.x = player.x;
+  playerDefeatState.y = player.y;
+
+  player.setDefeated?.(true);
+  player.setReviveGraceUntil?.(0);
+  player.bullets.length = 0;
+  player.shootBuffered = false;
+
+  stopGameOverSfx();
+  playGameOverSfx();
+  addScreenShake(0.16);
+  triggerGameFlash("rgba(255, 235, 180, 1)", 0.1);
+  return true;
+}
+
+function beginArenaRestart(now = performance.now()) {
+  hideGotoOverlay({ resume: false });
+  hideGameOver();
+  hideLevelOverlay();
+  clearLevelToast({ fadeAudio: false });
+  stopGameOverSfx();
+  stopAllAudio();
+  stopLevelupSfx();
+
+  continueUses = 0;
+  resetGame(1, true);
+  updateContinueButton();
+
+  awaitingArenaStartClick = true;
+  arenaStartMode = "restart";
+  window.PICHAN_WAIT_FOR_ARENA_PLAY = true;
+  pendingGameStart = true;
+
+  addScreenShake(0);
+  screenFx.trauma = 0;
+  screenFx.offsetX = 0;
+  screenFx.offsetY = 0;
+  screenFx.flashAlpha = 0;
+  drawArenaOnly(now);
+  setArenaStartVisible(true);
+  startArenaStartMotion(now);
+  playLevelupSfx();
+  engine.stop();
+}
+
+function updatePlayerDefeat(now) {
+  if (!playerDefeatState.active || !player) return false;
+
+  player.x = playerDefeatState.x;
+  player.y = playerDefeatState.y;
+  player.setDefeated?.(true);
+
+  const frameNow = Number.isFinite(now) ? now : performance.now();
+  if (frameNow < playerDefeatState.reviveAt) return true;
+
+  playerDefeatState.active = false;
+  playerDefeatState.reviveGraceUntil = frameNow + PLAYER_REVIVE_GRACE_MS;
+  player.setDefeated?.(false);
+  player.setReviveGraceUntil?.(playerDefeatState.reviveGraceUntil);
+  addScreenShake(0.06);
+  triggerGameFlash("rgba(255, 255, 210, 1)", 0.08);
+  return true;
 }
 
 function showGameOver() {
@@ -1243,6 +1540,90 @@ function drawArenaWallsAndGates(ctx, arena, gates) {
   }
 }
 
+const staticRenderLayer = {
+  key: "",
+  canvas: null,
+  gates: []
+};
+
+function invalidateStaticRenderLayer() {
+  staticRenderLayer.key = "";
+  staticRenderLayer.canvas = null;
+  staticRenderLayer.gates = [];
+}
+
+function getStaticAssetKey() {
+  return [
+    "tiles.arenaFloor",
+    "tiles.purpleStain",
+    "tiles.wallStraight",
+    "tiles.gateHorizontal",
+    "tiles.gateVertical",
+    "tiles.wallCorner"
+  ].map((id) => {
+    const image = getRenderAssetImage(id);
+    return image?.currentSrc || image?.src || `${id}:fallback`;
+  }).join("|");
+}
+
+function getStaticRenderKey(arena, gates) {
+  const arenaKey = arena?.points?.length
+    ? arena.points
+      .map((point) => `${Math.round(point.x * 10) / 10},${Math.round(point.y * 10) / 10}`)
+      .join(";")
+    : "no-arena";
+  const gatesKey = gates?.length
+    ? gates
+      .map((gate) => [
+        Math.round(gate.x * 10) / 10,
+        Math.round(gate.y * 10) / 10,
+        Math.round(gate.length * 10) / 10,
+        Math.round(gate.angle * 1000) / 1000
+      ].join(","))
+      .join(";")
+    : "no-gates";
+
+  return [
+    Math.round(WORLD_WIDTH),
+    Math.round(WORLD_HEIGHT),
+    levelManager?.currentLevel || 0,
+    backgroundCanvas?.width || 0,
+    backgroundCanvas?.height || 0,
+    arenaKey,
+    gatesKey,
+    getStaticAssetKey()
+  ].join(":");
+}
+
+function rebuildStaticRenderLayer(arena, gates, key) {
+  const layerCanvas = document.createElement("canvas");
+  layerCanvas.width = Math.max(1, Math.ceil(WORLD_WIDTH));
+  layerCanvas.height = Math.max(1, Math.ceil(WORLD_HEIGHT));
+  const layerCtx = layerCanvas.getContext("2d");
+  if (!layerCtx) return null;
+
+  layerCtx.imageSmoothingEnabled = false;
+  drawOutsideTerrain(layerCtx);
+  if (arena?.points?.length) {
+    drawArenaFloor(layerCtx, arena);
+    drawArenaWallsAndGates(layerCtx, arena, gates);
+  }
+
+  staticRenderLayer.key = key;
+  staticRenderLayer.canvas = layerCanvas;
+  staticRenderLayer.gates = gates;
+  return staticRenderLayer;
+}
+
+function getStaticRenderLayer(arena) {
+  const gates = arena?.points?.length ? resolveArenaGates(arena) : [];
+  const key = getStaticRenderKey(arena, gates);
+  if (staticRenderLayer.canvas && staticRenderLayer.key === key) {
+    return staticRenderLayer;
+  }
+  return rebuildStaticRenderLayer(arena, gates, key);
+}
+
 function drawQueuedOnionPreview(ctx, x, y, size, now, index) {
   const image = getRenderAssetImage("sprites.onionQueued") || getRenderAssetImage("sprites.onionIdle");
   const bob = Math.sin((now || 0) / 260 + index * 0.8) * 1.5;
@@ -1293,6 +1674,12 @@ function drawQueuedOnionPreviews(ctx, gates, progress, now) {
   }
 }
 
+function drawDefeatedOnionOverlays(ctx, now) {
+  for (const onion of onions) {
+    onion.drawDefeatedOverlay?.(ctx, now);
+  }
+}
+
 
 // ==========================================================
 // UPDATE — logica del gioco
@@ -1307,6 +1694,12 @@ function update(dt, now) {
   screenFx.offsetX = shakeStrength > 0.01 ? (Math.random() * 2 - 1) * shakeStrength : 0;
   screenFx.offsetY = shakeStrength > 0.01 ? (Math.random() * 2 - 1) * shakeStrength : 0;
   screenFx.flashAlpha = Math.max(0, screenFx.flashAlpha - dt * 1.6);
+
+  if (updatePlayerDefeat(now)) {
+    input.endFrame();
+    return;
+  }
+
   // 1) tempo
   state.gameTime += dt;
   if (!isOverlayActive() && !isPaused) {
@@ -1351,23 +1744,24 @@ function update(dt, now) {
   onions = levelManager.getOnions();
   levelManager.updateSpeedDot(now);
 
-  // 3b) collisioni BULLET → PLAYER (game over)
+  // 3b) collisioni BULLET → PLAYER
   let hitPlayer = false;
-  for (const bullet of player.bullets) {
-    if (!bullet.alive) continue;
-    const dx = player.x - bullet.x;
-    const dy = player.y - bullet.y;
-    const distSq = dx * dx + dy * dy;
-    const rr = (player.r + bullet.r) ** 2;
-    if (distSq < rr) {
-      bullet.alive = false;
-      hitPlayer = true;
-      break;
+  if (isPlayerVulnerable(now)) {
+    for (const bullet of player.bullets) {
+      if (!bullet.alive) continue;
+      const dx = player.x - bullet.x;
+      const dy = player.y - bullet.y;
+      const distSq = dx * dx + dy * dy;
+      const rr = (player.r + bullet.r) ** 2;
+      if (distSq < rr) {
+        bullet.alive = false;
+        hitPlayer = true;
+        break;
+      }
     }
   }
   if (hitPlayer) {
-    showGameOver();
-    engine.stop();
+    beginPlayerDefeat(now);
     input.endFrame();
     return;
   }
@@ -1444,14 +1838,13 @@ function update(dt, now) {
   for (const o of onions) {
     if (!o.alive || o.dying) continue;
 
-    // game over se onion tocca il player
+    // defeated/revive flow se onion tocca il player
     const dx = player.x - o.x;
     const dy = player.y - o.y;
     const distSq = dx * dx + dy * dy;
     const rr = (player.r + o.r) ** 2;
-    if (distSq < rr) {
-      showGameOver();
-      engine.stop();
+    if (distSq < rr && isPlayerVulnerable(now)) {
+      beginPlayerDefeat(now);
       input.endFrame();
       return;
     }
@@ -1491,6 +1884,14 @@ function update(dt, now) {
 
   updateRunHud();
   input.endFrame();
+  if (awaitingArenaStartClick) {
+    if (arenaStartMode === "restart") {
+      drawArenaOnly();
+      startArenaStartMotion();
+    } else {
+      drawArenaStartPreview();
+    }
+  }
 }
 
 
@@ -1504,16 +1905,21 @@ function draw(now) {
   ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
   const arena = levelManager.arena;
+  const staticLayer = getStaticRenderLayer(arena);
 
   ctx.save();
   ctx.translate(screenFx.offsetX, screenFx.offsetY);
 
+  if (staticLayer?.canvas) {
+    ctx.drawImage(staticLayer.canvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+  } else {
+    drawOutsideTerrain(ctx);
+  }
+
   if (arena && arena.points.length) {
-    const gates = resolveArenaGates(arena);
+    const gates = staticLayer?.gates || resolveArenaGates(arena);
     const progress = levelManager.getWaveProgress();
 
-    drawOutsideTerrain(ctx);
-    drawArenaFloor(ctx, arena);
     drawQueuedOnionPreviews(ctx, gates, progress, now);
 
     ctx.save();
@@ -1522,14 +1928,13 @@ function draw(now) {
     drawSpeedDot(ctx, levelManager.getSpeedDot(), now);
     onions.forEach((o) => o.draw(ctx, now));
     player.draw(ctx, now);
+    drawDefeatedOnionOverlays(ctx, now);
     ctx.restore();
-
-    drawArenaWallsAndGates(ctx, arena, gates);
   } else {
-    drawOutsideTerrain(ctx);
     drawSpeedDot(ctx, levelManager.getSpeedDot(), now);
     onions.forEach((o) => o.draw(ctx, now));
     player.draw(ctx, now);
+    drawDefeatedOnionOverlays(ctx, now);
   }
 
   ctx.restore();
@@ -1543,10 +1948,102 @@ function draw(now) {
   }
 }
 
+function createPerfProfiler() {
+  if (!PERF_MODE) return null;
+
+  const overlay = document.createElement("div");
+  overlay.className = "perf-overlay";
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.appendChild(overlay);
+
+  const samples = [];
+  const maxSamples = 300;
+  let lastOverlayUpdate = 0;
+  let lastConsoleUpdate = 0;
+
+  const percentile = (values, ratio) => {
+    if (!values.length) return 0;
+    const sorted = values.slice().sort((a, b) => a - b);
+    const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1));
+    return sorted[index];
+  };
+
+  const average = (values) => {
+    if (!values.length) return 0;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  };
+
+  const snapshot = () => {
+    const frameTimes = samples.map((sample) => sample.frameMs);
+    const workTimes = samples.map((sample) => sample.workMs);
+    const avgFrameMs = average(frameTimes);
+    const canvasRect = canvas.getBoundingClientRect();
+    const progress = levelManager.getWaveProgress();
+    const report = {
+      fps: avgFrameMs > 0 ? 1000 / avgFrameMs : 0,
+      avgFrameMs,
+      avgWorkMs: average(workTimes),
+      p95FrameMs: percentile(frameTimes, 0.95),
+      p99FrameMs: percentile(frameTimes, 0.99),
+      slow20: frameTimes.filter((value) => value > 20).length,
+      slow33: frameTimes.filter((value) => value > 33).length,
+      activeOnions: progress.activePressureCount,
+      bullets: player?.bullets?.length || 0,
+      explosions: player?.explosions?.length || 0,
+      cssSize: `${Math.round(canvasRect.width)}x${Math.round(canvasRect.height)}`,
+      backingSize: `${canvas.width}x${canvas.height}`,
+      dpr: canvasRect.width > 0 ? canvas.width / canvasRect.width : 0,
+      samples: samples.length
+    };
+    return report;
+  };
+
+  const renderReport = (report) => [
+    "PI.Onion perf",
+    `FPS avg: ${report.fps.toFixed(1)}`,
+    `Frame avg: ${report.avgFrameMs.toFixed(2)}ms`,
+    `Work avg: ${report.avgWorkMs.toFixed(2)}ms`,
+    `p95/p99: ${report.p95FrameMs.toFixed(2)} / ${report.p99FrameMs.toFixed(2)}ms`,
+    `Slow >20/>33: ${report.slow20} / ${report.slow33}`,
+    `Onions: ${report.activeOnions}  Bullets: ${report.bullets}  Expl: ${report.explosions}`,
+    `Canvas CSS: ${report.cssSize}`,
+    `Buffer: ${report.backingSize}  DPR: ${report.dpr.toFixed(2)}`
+  ].join("\n");
+
+  return {
+    record(metrics) {
+      const frameMs = Number(metrics.rawFrameMs);
+      const workMs = Number(metrics.workMs);
+      if (Number.isFinite(frameMs) && frameMs > 0) {
+        samples.push({
+          frameMs,
+          workMs: Number.isFinite(workMs) ? workMs : 0
+        });
+        if (samples.length > maxSamples) samples.shift();
+      }
+
+      if (metrics.timestamp - lastOverlayUpdate >= 500) {
+        lastOverlayUpdate = metrics.timestamp;
+        overlay.textContent = renderReport(snapshot());
+      }
+
+      if (metrics.timestamp - lastConsoleUpdate >= 5000) {
+        lastConsoleUpdate = metrics.timestamp;
+        console.info("[PI.Onion perf]", snapshot());
+      }
+    },
+    getSnapshot: snapshot
+  };
+}
+
 // ==========================================================
 // ENGINE SETUP
 // ==========================================================
-const engine = new Engine(update, draw);
+const perfProfiler = createPerfProfiler();
+window.PICHAN_PERF_PROFILER = perfProfiler;
+const engine = new Engine(update, draw, {
+  frameObserver: perfProfiler ? (metrics) => perfProfiler.record(metrics) : null
+});
 const lifecycle = createLifecycle({
   engine,
   getIsPaused: () => isPaused,
@@ -1575,6 +2072,8 @@ const ASSET_IMAGES = [
   "./assets/collage/player_left.png",
   "./assets/collage/player_up.png",
   "./assets/collage/player_down.png",
+  "./assets/collage/player_defeated.png",
+  "./assets/collage/play.png",
   "./assets/collage/onion_idle.png",
   "./assets/collage/onion_chase.png",
   "./assets/collage/onion_defeated.png",
@@ -1604,6 +2103,7 @@ const missingRenderAssets = renderAssets.getMissing();
 if (missingRenderAssets.length > 0) {
   console.info("[render-assets] optional PNG assets missing; using canvas fallbacks", missingRenderAssets);
 }
+invalidateStaticRenderLayer();
 assetsLoaded = true;
 startEngineIfReady();
 
@@ -1627,6 +2127,10 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("pointerdown", () => {
   startBgmOnce();
 });
+
+if (arenaStartBtn) {
+  arenaStartBtn.addEventListener("click", startFromArenaPlay);
+}
 
 let gotoKeyHits = [];
 window.addEventListener("keydown", (event) => {

@@ -16,10 +16,16 @@ export class Explosion {
     this.innerColor = options.innerColor || [255, 255, 220];
     this.midColor = options.midColor || [255, 210, 110];
     this.outerColor = options.outerColor || [255, 120, 30];
+    const perfOptions = typeof window !== "undefined" ? window.PICHAN_PERF_OPTIONS : null;
     this.shadowColor = options.shadowColor || 'rgba(255,220,150,0.65)';
-    this.shadowBlur = Number.isFinite(options.shadowBlur) ? options.shadowBlur : 20;
+    const requestedShadowBlur = Number.isFinite(options.shadowBlur) ? options.shadowBlur : 20;
+    this.shadowBlur = perfOptions?.explosionShadowBlur === false ? 0 : requestedShadowBlur;
     this.ring = options.ring !== false;
-    this.sparkCount = Number.isFinite(options.sparkCount) ? options.sparkCount : 6;
+    const requestedSparkCount = Number.isFinite(options.sparkCount) ? options.sparkCount : 6;
+    const sparkScale = Number.isFinite(perfOptions?.explosionSparkScale)
+      ? perfOptions.explosionSparkScale
+      : 1;
+    this.sparkCount = Math.max(0, Math.round(requestedSparkCount * sparkScale));
     this.sparkLength = Number.isFinite(options.sparkLength) ? options.sparkLength : Math.max(8, this.maxRadius * 0.35);
     this.seed = Number.isFinite(options.seed) ? options.seed : Math.random() * Math.PI * 2;
   }

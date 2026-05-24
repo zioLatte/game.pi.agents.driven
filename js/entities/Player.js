@@ -28,6 +28,7 @@ export class Player {
     this.spriteLeft = this.#loadSprite("./assets/collage/player_left.png");
     this.spriteUp = this.#loadSprite("./assets/collage/player_up.png");
     this.spriteDown = this.#loadSprite("./assets/collage/player_down.png");
+    this.spriteDefeated = this.#loadSprite("./assets/collage/player_defeated.png");
 
     this.sprite = this.spriteIdle.img;
     this.spriteLoaded = false;
@@ -51,6 +52,8 @@ export class Player {
     this.speedBoostUntil = 0;
     this.speedBoostStartedAt = 0;
     this.speedBoostDurationMs = 0;
+    this.defeated = false;
+    this.reviveGraceUntil = 0;
   }
 
   #loadSprite(path) {
@@ -86,6 +89,14 @@ export class Player {
     this.recoilX *= Math.max(0, 1 - dt * 10);
     this.recoilY *= Math.max(0, 1 - dt * 10);
     this.squash += (0 - this.squash) * Math.min(1, dt * 10);
+
+    if (this.defeated) {
+      for (const b of this.bullets) b.update(dt);
+      this.bullets = this.bullets.filter((b) => b.alive);
+      for (const e of this.explosions) e.update(dt);
+      this.explosions = this.explosions.filter((e) => e.alive);
+      return;
+    }
 
     let dx = 0;
     let dy = 0;
@@ -190,6 +201,21 @@ export class Player {
     return Math.max(0, Math.min(1, remaining / this.speedBoostDurationMs));
   }
 
+  setDefeated(next) {
+    this.defeated = Boolean(next);
+    if (this.defeated) {
+      this.shootBuffered = false;
+      this.cooldown = Math.max(this.cooldown, this.cooldownTime);
+      this.recoilX = 0;
+      this.recoilY = 0;
+      this.squash = 0;
+    }
+  }
+
+  setReviveGraceUntil(now) {
+    this.reviveGraceUntil = Number.isFinite(now) ? now : 0;
+  }
+
   shoot(now) {
     let dirX = 0;
     let dirY = 0;
@@ -265,21 +291,24 @@ export class Player {
     const frameNow = now ?? performance.now();
     const boosted = this.isSpeedBoosted(frameNow);
     const renderAssets = typeof window !== "undefined" ? window.PICHAN_RENDER_ASSETS : null;
-    const spriteKey = {
-      up: "sprites.pichanUp",
-      down: "sprites.pichanDown",
-      left: "sprites.pichanLeft",
-      right: "sprites.pichanRight",
-      idle: "sprites.pichanIdle"
-    }[this.currentDirection] || "sprites.pichanIdle";
+    const defeated = this.defeated;
+    const spriteKey = defeated
+      ? "sprites.pichanDefeated"
+      : ({
+        up: "sprites.pichanUp",
+        down: "sprites.pichanDown",
+        left: "sprites.pichanLeft",
+        right: "sprites.pichanRight",
+        idle: "sprites.pichanIdle"
+      }[this.currentDirection] || "sprites.pichanIdle");
     const pipelineSprite = renderAssets?.getImage?.(spriteKey)
       || renderAssets?.getImage?.("sprites.pichanIdle")
       || null;
     const boostRingSprite = renderAssets?.getImage?.("sprites.boostRing") || null;
 
     const spriteScale = (typeof window !== "undefined" && window.SPRITE_SCALE) ? window.SPRITE_SCALE : 1;
-    const baseSize = Math.round(this.r * 3.45 * spriteScale);
-    const hoverOffset = Math.sin(this.hoverTime) * 1.6;
+    const baseSize = Math.round(this.r * (defeated ? 4.4 : 3.45) * spriteScale);
+    const hoverOffset = defeated ? 0 : Math.sin(this.hoverTime) * 1.6;
     const squashX = 1 + this.squash * 0.35;
     const squashY = 1 - this.squash * 0.3;
     const px = Math.floor(this.x + this.recoilX) + 0.5;
@@ -291,10 +320,10 @@ export class Player {
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
 
-    if (boosted) {
+    if (!defeated && boosted) {
       const pulse = 0.5 + 0.5 * Math.sin(frameNow / 90);
       const remainingRatio = this.getSpeedBoostRemainingRatio(frameNow);
-      const ringRadius = this.r * 1.28 + pulse * 2;
+      const ringRadius = (this.r * 1.28 + pulse * 2) * spriteScale;
       ctx.save();
       if (boostRingSprite) {
         const ringSize = ringRadius * 2.35;
@@ -337,6 +366,10 @@ export class Player {
     }
 
     const sprite = pipelineSprite || (this.sprite && this.sprite.complete ? this.sprite : null);
+    const inReviveGrace = frameNow < this.reviveGraceUntil;
+    if (inReviveGrace) {
+      ctx.globalAlpha = 0.58 + 0.28 * (0.5 + 0.5 * Math.sin(frameNow / 65));
+    }
     if (sprite) {
       ctx.drawImage(sprite, -baseSize / 2, -baseSize / 2, baseSize, baseSize);
     } else {

@@ -17,30 +17,7 @@ const versionOverlay = document.getElementById("version-overlay");
 const versionReload = document.getElementById("version-reload");
 const cssLink = document.getElementById("game-css");
 const loadingOverlay = document.getElementById("loading-overlay");
-const loadingBox = document.getElementById("loading-box");
-const loadingPi = document.getElementById("loading-pi");
-const loadingSpinner = document.getElementById("loading-spinner");
 const loadingStatus = document.getElementById("loading-status");
-const loadingPlay = document.getElementById("loading-play");
-let loadingPiDirection = 1;
-let loadingPiAnimHandler = null;
-let loadingPiCycleId = null;
-const loadingPiIdleSprites = [
-  "./assets/collage/player_down.png",
-  "./assets/collage/player_left.png",
-  "./assets/collage/player_up.png",
-  "./assets/collage/player_right.png"
-];
-const stopLoadingPiCycle = () => {
-  if (loadingPiCycleId) {
-    clearInterval(loadingPiCycleId);
-    loadingPiCycleId = null;
-  }
-  if (loadingPiAnimHandler && loadingPi) {
-    loadingPi.removeEventListener("animationiteration", loadingPiAnimHandler);
-    loadingPiAnimHandler = null;
-  }
-};
 
 const appendVersion = (path, versionValue) => {
   if (!versionValue) return path;
@@ -79,6 +56,7 @@ const startGame = (versionValue) => {
   if (gameStarted) return;
   gameStarted = true;
   applyAssetVersion(versionValue);
+  window.PICHAN_WAIT_FOR_ARENA_PLAY = true;
   const url = new URL("../main.js", import.meta.url);
   if (versionValue) {
     url.searchParams.set("v", String(versionValue));
@@ -86,7 +64,7 @@ const startGame = (versionValue) => {
   import(url.href);
 };
 
-// Preload moduli per scaldare la cache; main.js viene importato solo dopo Play.
+// Preload moduli per scaldare la cache; main.js prepara l'arena e attende Play in canvas.
 const JS_MODULES = [
   "./core/Engine.js",
   "./core/Input.js",
@@ -104,41 +82,8 @@ const JS_MODULES = [
 ];
 
 const preloadScriptsAndStart = async (versionValue) => {
-  if (loadingOverlay) {
-    loadingOverlay.classList.add("visible");
-  }
-  if (loadingBox) {
-    loadingBox.classList.remove("loading-ready");
-  }
-  if (loadingPi) {
-    const rightSrc = "./assets/collage/player_right.png";
-    const leftSrc = "./assets/collage/player_left.png";
-    loadingPiDirection = 1;
-    loadingPi.src = rightSrc;
-    loadingPi.style.left = "";
-    loadingPi.style.transform = "";
-    loadingPi.classList.remove("loading-pi--idle");
-    stopLoadingPiCycle();
-    if (!loadingPiAnimHandler) {
-      loadingPiAnimHandler = () => {
-        loadingPiDirection *= -1;
-        loadingPi.src = loadingPiDirection > 0 ? rightSrc : leftSrc;
-      };
-      loadingPi.addEventListener("animationiteration", loadingPiAnimHandler);
-    }
-    loadingPi.style.animation = "none";
-    loadingPi.offsetHeight;
-    loadingPi.style.animation = "";
-  }
-  if (loadingSpinner) {
-    loadingSpinner.style.display = "";
-  }
   if (loadingStatus) {
     loadingStatus.textContent = "";
-  }
-  if (loadingPlay) {
-    loadingPlay.classList.remove("visible");
-    loadingPlay.disabled = true;
   }
 
   const results = await Promise.allSettled(
@@ -152,6 +97,9 @@ const preloadScriptsAndStart = async (versionValue) => {
 
   const failed = results.some((res) => res.status === "rejected");
   if (failed) {
+    if (loadingOverlay) {
+      loadingOverlay.classList.add("visible");
+    }
     if (loadingStatus) {
       const failedList = results
         .map((res, idx) => (res.status === "rejected" ? JS_MODULES[idx] : null))
@@ -162,41 +110,10 @@ const preloadScriptsAndStart = async (versionValue) => {
     return;
   }
 
-  if (loadingStatus) {
-    loadingStatus.textContent = "";
+  if (loadingOverlay) {
+    loadingOverlay.classList.remove("visible");
   }
-  if (loadingSpinner) {
-    loadingSpinner.style.display = "none";
-  }
-  if (loadingBox) {
-    loadingBox.classList.add("loading-ready");
-  }
-  if (loadingPi) {
-    loadingPi.src = "./assets/collage/player_down.png";
-    loadingPi.style.animation = "";
-    loadingPi.classList.add("loading-pi--idle");
-    stopLoadingPiCycle();
-    let idleIndex = 0;
-    loadingPiCycleId = setInterval(() => {
-      if (!loadingPi) return;
-      loadingPi.src = loadingPiIdleSprites[idleIndex % loadingPiIdleSprites.length];
-      idleIndex += 1;
-    }, 450);
-  }
-  if (loadingPlay) {
-    loadingPlay.classList.add("visible");
-    loadingPlay.disabled = false;
-    loadingPlay.addEventListener("click", () => {
-      if (loadingOverlay) {
-        loadingOverlay.classList.remove("visible");
-      }
-      stopLoadingPiCycle();
-      if (loadingPi) {
-        loadingPi.classList.remove("loading-pi--idle");
-      }
-      startGame(versionValue);
-    }, { once: true });
-  }
+  startGame(versionValue);
 };
 
 const parseVersion = (value) => {

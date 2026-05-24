@@ -16,6 +16,43 @@ export function createAudioController(elements) {
   let bgmEnabled = true;
   let levelupFadeId = null;
 
+  const createSfxPool = (sourceEl, size = 4) => {
+    if (!sourceEl) return [];
+    return Array.from({ length: size }, () => {
+      const clone = sourceEl.cloneNode(true);
+      clone.preload = "auto";
+      return clone;
+    });
+  };
+
+  const shotPool = createSfxPool(shotSfxEl, 5);
+  const bouncePool = createSfxPool(bounceSfxEl, 4);
+  const onionDeathPool = createSfxPool(onionDeathSfxEl, 4);
+  const poolCursors = new WeakMap();
+
+  const playPooledSfx = (sourceEl, pool, volume = null) => {
+    if (!sourceEl) return;
+
+    if (!pool.length) {
+      if (volume !== null) sourceEl.volume = volume;
+      sourceEl.currentTime = 0;
+      sourceEl.play().catch(() => {});
+      return;
+    }
+
+    let cursor = poolCursors.get(pool) || 0;
+    let node = pool.find((candidate) => candidate.paused || candidate.ended);
+    if (!node) {
+      node = pool[cursor % pool.length];
+      cursor += 1;
+      poolCursors.set(pool, cursor);
+    }
+
+    if (volume !== null) node.volume = volume;
+    node.currentTime = 0;
+    node.play().catch(() => {});
+  };
+
   const startBgmOnce = () => {
     if (!bgmEl || bgmStarted || !bgmEnabled) return;
     bgmStarted = true;
@@ -68,22 +105,15 @@ export function createAudioController(elements) {
   };
 
   const playShotSfx = () => {
-    if (!shotSfxEl) return;
-    shotSfxEl.volume = 0.8;
-    shotSfxEl.currentTime = 0;
-    shotSfxEl.play().catch(() => {});
+    playPooledSfx(shotSfxEl, shotPool, 0.8);
   };
 
   const playBounceSfx = () => {
-    if (!bounceSfxEl) return;
-    bounceSfxEl.currentTime = 0;
-    bounceSfxEl.play().catch(() => {});
+    playPooledSfx(bounceSfxEl, bouncePool);
   };
 
   const playOnionDeathSfx = () => {
-    if (!onionDeathSfxEl) return;
-    onionDeathSfxEl.currentTime = 0;
-    onionDeathSfxEl.play().catch(() => {});
+    playPooledSfx(onionDeathSfxEl, onionDeathPool);
   };
 
   const playLevelupSfx = () => {

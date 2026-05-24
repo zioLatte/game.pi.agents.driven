@@ -27,7 +27,7 @@
 // ==========================================================
 
 export class Engine {
-  constructor(updateFn, drawFn) {
+  constructor(updateFn, drawFn, options = {}) {
 
     // ------------------------------------------------------
     // CALLBACK ESTERNE
@@ -36,6 +36,9 @@ export class Engine {
     // drawFn(): disegna la scena attuale
     this.updateFn = updateFn || function(){};
     this.drawFn   = drawFn   || function(){};
+    this.frameObserver = typeof options.frameObserver === "function"
+      ? options.frameObserver
+      : null;
 
     // ------------------------------------------------------
     // STATO DEL LOOP
@@ -88,17 +91,29 @@ export class Engine {
     }
 
     // tempo trascorso dall'ultimo frame
-    let dt = (timestamp - this.lastTime) / 1000;
+    const rawFrameMs = timestamp - this.lastTime;
+    let dt = rawFrameMs / 1000;
     this.lastTime = timestamp;
 
     // dt troppo grande può generare tunneling o salti strani
     if (dt > 0.05) dt = 0.05;
+
+    const frameStart = this.frameObserver ? performance.now() : 0;
 
     // logica di gioco
     this.updateFn(dt, timestamp);
 
     // rendering
     this.drawFn(timestamp);
+
+    if (this.frameObserver) {
+      this.frameObserver({
+        timestamp,
+        rawFrameMs,
+        clampedDtMs: dt * 1000,
+        workMs: performance.now() - frameStart
+      });
+    }
 
     // prossimo frame
     requestAnimationFrame(this.boundLoop);

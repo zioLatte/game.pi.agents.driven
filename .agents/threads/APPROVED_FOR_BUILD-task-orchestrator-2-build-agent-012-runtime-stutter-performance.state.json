@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-012",
+  "thread_name": "runtime-stutter-performance",
+  "thread_basename": "APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-012-runtime-stutter-performance",
+  "title": "reduce runtime gameplay stutters without gameplay changes",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "runtime-performance",
+  "task_level": "L2",
+  "patch_budget": "medium",
+  "status": "APPROVED_FOR_BUILD",
+  "current_owner": "build-agent",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-24 10:57 CEST",
+  "current_status_since": "2026-05-24 10:57 CEST",
+  "last_handoff_at": "2026-05-24 10:57 CEST",
+  "opened_at": "2026-05-24 10:57 CEST",
+  "last_updated_at": "2026-05-24 10:57 CEST",
+  "resolved_at": null,
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-012-runtime-stutter-performance.md",
+  "state_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-012-runtime-stutter-performance.state.json",
+  "log_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-012-runtime-stutter-performance.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-014",
+  "total_execution_minutes": 0,
+  "problem_statement": "Gameplay stutters occur during movement, shooting, collisions, explosions, wave progress, and transitions; initial loading is not the issue.",
+  "game_flow_context": "movement / shooting / collision feedback / explosions / wave progress / level transitions / HUD / Canvas 2D rendering",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    ".agents/contracts/pichan-wave-model-contract.md",
+    "user task: runtime stutter performance fix"
+  ],
+  "validated_decisions": [
+    "Treat as performance implementation without gameplay design changes.",
+    "Skip separate design/programming/impact passes because user supplied explicit non-goals, implementation priorities, validation requirements, and impact files.",
+    "Diagnostics must be opt-in through ?perf=1 and inactive in normal mode."
+  ],
+  "draft_assumptions_in_play": [
+    "Runtime stutter is likely caused by per-frame DOM writes, repeated static canvas render work, optional visual effects, or audio reset behavior.",
+    "Static render caching is acceptable only for non-animated visuals."
+  ],
+  "current_direction": [
+    "Identify update/draw per-frame work.",
+    "Dirty-update HUD DOM writes.",
+    "Cache static canvas layer.",
+    "Add opt-in profiler and perf diagnostic visual downgrades.",
+    "Keep audio changes localized if needed."
+  ],
+  "explicit_non_goals": [
+    "No stack migration.",
+    "No gameplay rule changes.",
+    "No scoring changes.",
+    "No wave model changes.",
+    "No visual identity removal in normal mode.",
+    "No broad rewrite."
+  ],
+  "approved_impact_surface": [
+    "main.js",
+    "js/core/Engine.js",
+    "js/ui/canvas.js",
+    "js/entities/Player.js",
+    "js/entities/Onion.js",
+    "js/entities/Bullet.js",
+    "js/entities/Explosion.js",
+    "js/ui/audio.js",
+    "css/game.css",
+    "index.html"
+  ],
+  "forbidden_files": [
+    "config/levels.json",
+    "js/core/LevelManager.js",
+    "js/core/Arena.js",
+    "js/ai/OnionAI.js",
+    "assets/**",
+    "sounds/**",
+    "network/online/presence files",
+    "unrelated docs"
+  ],
+  "freeze_zones": [
+    "gameplay rules",
+    "scoring",
+    "wave model",
+    "level data",
+    "enemy behavior tuning"
+  ],
+  "backward_compatibility_concerns": [
+    "normal-mode visuals must remain unchanged",
+    "perf overlay must not run unless ?perf=1",
+    "static cache invalidation must handle resize and asset readiness"
+  ],
+  "required_validations": [
+    "node --input-type=module --check < changed-js-file> for every changed JS file",
+    "run local game normal mode",
+    "run local game with ?perf=1",
+    "manual browser checklist",
+    "PHPMD if PHP/PHPMD context exists; otherwise mark not applicable"
+  ],
+  "human_test_checklist": [
+    "movement",
+    "shooting",
+    "bullet bounce",
+    "onion death",
+    "speed dot",
+    "wave completion",
+    "game over and continue",
+    "normal mode visuals unchanged",
+    "?perf=1 profiler visible and normal mode profiler absent"
+  ],
+  "open_questions": [],
+  "artifacts": [],
+  "solution_applied": [],
+  "decision_log_summary": [
+    "LOG-001: task-orchestrator approved a scoped runtime performance build and routed to build-agent.",
+    "LOG-002: build-agent implemented performance patch and proposed BUILD_DONE.",
+    "LOG-003: task-orchestrator reopened build for speed-dot lightning readability regression reported by user.",
+    "LOG-004: build-agent fixed speed-dot lightning contrast/scale in main.js and proposed BUILD_DONE.",
+    "LOG-005: task-orchestrator reopened build for boosted onion visual regression.",
+    "LOG-006: build-agent replaced boosted onion pickup overlay with readable ring/halo and proposed BUILD_DONE.",
+    "LOG-007: task-orchestrator reopened build for clean lightning rendering request.",
+    "LOG-008: build-agent removed extra lightning backing/ring/crosshair layers and proposed BUILD_DONE.",
+    "LOG-009: task-orchestrator reopened build for defeated onion readability/appreciation.",
+    "LOG-010: build-agent added defeated onion overlay redraw above explosions and proposed BUILD_DONE.",
+    "LOG-011: task-orchestrator reopened build for viewport-responsive sprite scaling.",
+    "LOG-012: build-agent made sprite visual scale responsive to viewport resize and proposed BUILD_DONE.",
+    "LOG-013: task-orchestrator reopened build for new player PNG asset integration.",
+    "LOG-014: build-agent normalized new player PNGs to 256 RGBA transparent runtime sprites and proposed BUILD_DONE."
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "task_id": "PI-013",
+  "thread_name": "player-defeated-revive-flow",
+  "thread_basename": "APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-013-player-defeated-revive-flow",
+  "title": "use player defeated sprite with auto revive and nonblocking level-up",
+  "repo": "/home/alessio/gaming-e-cazzeggio/pi.2",
+  "branch": "main",
+  "domain_stream": "pichan-gameplay",
+  "primary_area": "player-flow",
+  "task_level": "L2",
+  "patch_budget": "medium",
+  "status": "APPROVED_FOR_BUILD",
+  "current_owner": "build-agent",
+  "expected_handoff_owner": "task-orchestrator",
+  "current_owner_since": "2026-05-24 14:10 CEST",
+  "current_status_since": "2026-05-24 14:10 CEST",
+  "last_handoff_at": "2026-05-24 14:10 CEST",
+  "opened_at": "2026-05-24 14:10 CEST",
+  "last_updated_at": "2026-05-24 14:10 CEST",
+  "resolved_at": null,
+  "opened_by": "task-orchestrator",
+  "thread_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-013-player-defeated-revive-flow.md",
+  "state_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-013-player-defeated-revive-flow.state.json",
+  "log_file": ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-013-player-defeated-revive-flow.log.jsonl",
+  "legacy_files": [],
+  "latest_log_id": "LOG-001",
+  "total_execution_minutes": 0,
+  "problem_statement": "Current Pi-Chan death flow uses game-over interruption/continue UI instead of showing the new defeated sprite and reviving in place after a short standby.",
+  "game_flow_context": "player death / continue / revive / level transition / visual feedback",
+  "scope_inputs": [
+    "AGENTS.md",
+    ".agents/contracts/pichan-gameplay-contract.md",
+    "user request: player defeated asset and auto revive"
+  ],
+  "validated_decisions": [
+    "Use existing continue budget as finite auto-revive limit.",
+    "Normalize source player_defeated asset into runtime collage asset.",
+    "Do not change scoring, wave model, level data, collision radius, or movement speed."
+  ],
+  "draft_assumptions_in_play": [
+    "Standby lasts roughly two seconds.",
+    "A short post-revive grace window is needed to prevent immediate repeated death in the same position.",
+    "Game-over overlay remains only when auto-continues are exhausted."
+  ],
+  "current_direction": [
+    "Add player defeated asset to manifest/preload.",
+    "Draw defeated Pi-Chan with new sprite.",
+    "Replace immediate game-over stop on player hit with defeated standby and automatic revive while continues remain.",
+    "Keep wave completion level-up nonblocking."
+  ],
+  "explicit_non_goals": [
+    "No scoring changes.",
+    "No wave model changes.",
+    "No level data changes.",
+    "No collision radius or movement speed changes.",
+    "No new enemy/player systems."
+  ],
+  "approved_impact_surface": [
+    "main.js",
+    "js/entities/Player.js",
+    "js/core/assets.js",
+    "index.html",
+    "assets/collage/player_defeated.png",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-013-player-defeated-revive-flow.md",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-013-player-defeated-revive-flow.state.json",
+    ".agents/threads/APPROVED_FOR_BUILD-task-orchestrator-2-build-agent-013-player-defeated-revive-flow.log.jsonl"
+  ],
+  "forbidden_files": [
+    "config/levels.json",
+    "js/core/LevelManager.js",
+    "js/entities/Onion.js",
+    "unrelated assets",
+    "CSS unless necessary"
+  ],
+  "freeze_zones": [
+    "wave model",
+    "scoring",
+    "enemy tuning",
+    "physics radius"
+  ],
+  "backward_compatibility_concerns": [
+    "auto revive changes death flow; keep continue budget finite",
+    "same-position revive needs brief grace window"
+  ],
+  "required_validations": [
+    "node --input-type=module --check < changed-js-file>",
+    "PNG dimension/alpha validation",
+    "browser smoke normal mode"
+  ],
+  "human_test_checklist": [
+    "player killed by bullet enters defeated standby",
+    "player killed by onion enters defeated standby",
+    "player revives in same position after delay",
+    "no blocking game-over UI before continues are exhausted",
+    "level-up continues without blocking overlay",
+    "new defeated sprite has clean transparency/scaling"
+  ],
+  "open_questions": [],
+  "artifacts": [],
+  "solution_applied": [],
+  "decision_log_summary": [
+    "LOG-001: task-orchestrator approved scoped build for player defeated auto-revive flow."
+  ]
+}
