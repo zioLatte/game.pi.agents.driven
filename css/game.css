@@ -2,24 +2,42 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
-      background: #000000;
+      background:
+        radial-gradient(circle at 22% 18%, rgba(255, 232, 160, 0.10), transparent 18%),
+        radial-gradient(circle at 74% 70%, rgba(65, 31, 14, 0.24), transparent 26%),
+        repeating-linear-gradient(96deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 18px),
+        linear-gradient(90deg, #7b4d27 0%, #a06a38 24%, #6a3e1f 52%, #9a6535 76%, #5f361a 100%);
       width: 100vw;
       height: 100vh;
+      min-height: 100dvh;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: stretch;
+      justify-content: stretch;
     }
 
     #layout {
-      display: flex;
-      align-items: flex-start;
-      gap: 18px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas:
+        "hud"
+        "stage";
+      align-items: stretch;
+      gap: clamp(6px, 1.1vmin, 12px);
       width: 100vw;
       height: 100vh;
-      justify-content: center;
+      height: 100dvh;
       box-sizing: border-box;
-      padding: 20px;
+      padding: clamp(8px, 1.45vmin, 16px);
       position: relative;
+    }
+
+    #layout.has-players-panel {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas:
+        "hud players"
+        "stage players";
     }
 
     .level-toast {
@@ -53,20 +71,36 @@
     }
 
     #game-wrap {
+      grid-area: stage;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 12px;
+      align-items: stretch;
+      justify-content: stretch;
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      gap: 0;
+      filter: drop-shadow(0 11px 11px rgba(36, 20, 7, 0.35));
     }
 
     #game {
       cursor: none;
+      outline: 3px solid rgba(241, 229, 203, 0.72);
+      outline-offset: -3px;
+      border-radius: 10px;
+      background: #e2d6bc;
+      box-shadow:
+        0 0 0 2px rgba(48, 42, 62, 0.32),
+        inset 0 0 42px rgba(83, 56, 35, 0.18);
     }
 
     .players-panel {
+      grid-area: players;
       position: relative;
       display: none;
       width: 320px;
+      max-height: 100%;
       overflow: auto;
       padding: 10px;
       border: 2px solid #2a2a2a;
@@ -76,6 +110,7 @@
       font: 14px monospace;
       z-index: 60;
       box-shadow: 0 0 16px rgba(0, 0, 0, 0.25);
+      box-sizing: border-box;
     }
 
     .players-panel.is-visible {
@@ -83,198 +118,156 @@
     }
 
     .run-hud {
-      width: 248px;
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
+      grid-area: hud;
+      align-self: stretch;
+      width: 100%;
+      min-height: 44px;
+      max-height: none;
+      display: grid;
+      grid-template-columns: minmax(92px, 0.62fr) minmax(126px, 0.82fr) minmax(210px, 1.56fr);
+      align-items: stretch;
+      gap: 8px;
       box-sizing: border-box;
-      overflow: auto;
-      padding: 12px;
-      border: 4px solid #d7b85a;
-      border-radius: 2px;
-      background-color: #08090a;
-      background-image:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 100%),
-        linear-gradient(180deg, #303437 0%, #151719 32%, #08090a 100%);
-      background-size: 6px 100%, 100% 100%;
-      color: #f6f0d4;
-      font: 13px monospace;
-      letter-spacing: 0;
+      overflow: visible;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #2b2a27;
+      font: 13px "Trebuchet MS", "Comic Sans MS", monospace;
       text-transform: uppercase;
       pointer-events: none;
       z-index: 6;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      box-shadow:
-        inset 0 0 0 2px #050505,
-        inset 0 0 0 5px #3a3d3f,
-        0 0 0 2px #050505,
-        0 12px 20px rgba(0, 0, 0, 0.42);
-    }
-
-    .run-hud__marquee {
-      padding: 8px 8px 7px;
-      border: 2px solid #060606;
-      background: #17191b;
-      box-shadow: inset 0 0 0 2px #4a4d50;
-      text-align: center;
-    }
-
-    .run-hud__title {
-      color: #fff05a;
-      font-size: 21px;
-      font-weight: 900;
-      line-height: 1;
-    }
-
-    .run-hud__subtitle {
-      margin-top: 3px;
-      color: #5feaff;
-      font-size: 10px;
-      font-weight: 700;
+      image-rendering: auto;
     }
 
     .run-hud__block {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 9px;
-      border: 2px solid #050505;
-      border-radius: 0;
-      background: rgba(18, 20, 22, 0.96);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      min-width: 0;
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      column-gap: 8px;
+      padding: 8px 12px;
+      border: 2px solid rgba(43, 40, 35, 0.18);
+      border-radius: 2px 9px 3px 11px;
+      background:
+        linear-gradient(180deg, rgba(241, 231, 202, 0.98), rgba(220, 204, 172, 0.98));
+      box-shadow:
+        0 4px 0 rgba(58, 37, 19, 0.18),
+        0 8px 10px rgba(40, 20, 6, 0.20),
+        inset 0 0 0 1px rgba(255,255,255,0.32);
+      transform: rotate(-0.35deg);
     }
 
-    .run-hud__row {
-      display: flex;
+    .run-hud__block::before {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: -9px;
+      left: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff29a 0 12%, #d63b36 18% 58%, #7a1e1c 62% 100%);
+      box-shadow: 1px 3px 3px rgba(0,0,0,0.35);
+    }
+
+    .run-hud__block--level {
+      background: linear-gradient(180deg, rgba(72, 75, 76, 0.96), rgba(43, 45, 46, 0.96));
+      color: #f4e2a1;
+      transform: rotate(-0.65deg);
+    }
+
+    .run-hud__block--onion {
+      background: linear-gradient(180deg, rgba(224, 152, 175, 0.98), rgba(204, 125, 151, 0.98));
+      transform: rotate(0.42deg);
+    }
+
+    .run-hud__block--wave {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 6px;
+      background: linear-gradient(180deg, rgba(181, 211, 224, 0.98), rgba(153, 190, 209, 0.98));
+      transform: rotate(-0.18deg);
+    }
+
+    .run-hud__metric-row {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
+      column-gap: 8px;
     }
 
-    .run-hud__label,
-    .run-hud__pressure-grid span,
-    .run-hud__sub {
-      color: #63e7f7;
+    .run-hud__label {
+      color: #28313d;
       font-size: 11px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .run-hud__row strong,
-    .run-hud__pressure-grid strong {
-      color: #fff2a3;
-      font-size: 16px;
       font-weight: 900;
       line-height: 1;
-      text-align: right;
+      letter-spacing: 0;
+      white-space: nowrap;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.32);
     }
 
-    .run-hud__block--level,
-    .run-hud__block--score {
-      background: #0b0c0d;
-    }
-
-    .run-hud__level {
-      display: block;
-      color: #fff05a;
-      font-size: 56px;
+    .run-hud__value {
+      display: inline-block;
+      justify-self: end;
+      min-width: 42px;
+      padding: 1px 7px 2px;
+      color: #2b2a27;
+      font-size: clamp(18px, 2.1vw, 31px);
       font-weight: 900;
-      line-height: 0.9;
+      line-height: 0.95;
       text-align: right;
+      white-space: nowrap;
+      background:
+        url("../assets/collage/hud_number_box.png") center / 100% 100% no-repeat,
+        rgba(42, 40, 36, 0.08);
+      border-radius: 2px;
+      box-shadow: 1px 2px 0 rgba(58, 37, 19, 0.16);
+      text-shadow: 1px 1px 0 rgba(255,255,255,0.34);
     }
 
-    .run-hud__score {
-      display: block;
-      color: #fff05a;
-      font-size: 28px;
-      font-weight: 900;
-      line-height: 1;
-      text-align: right;
+    .run-hud__block--level .run-hud__label,
+    .run-hud__block--level .run-hud__value {
+      color: #f5dd87;
+      text-shadow: 2px 1px 0 rgba(0,0,0,0.26);
+    }
+
+    .run-hud__block--onion .run-hud__label,
+    .run-hud__block--onion .run-hud__value {
+      color: #2f2b31;
     }
 
     .run-hud__meter {
       height: 10px;
       overflow: hidden;
-      border: 2px solid #050505;
-      border-radius: 0;
-      background: #030303;
-      box-shadow: inset 0 0 0 1px #45484a;
+      border: 2px solid rgba(42, 38, 35, 0.82);
+      border-radius: 2px;
+      background:
+        url("../assets/collage/hud_wave_bar_segment.png") center / 100% 100% no-repeat,
+        #d8cab0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
     }
 
     .run-hud__meter--segmented {
       background-image: repeating-linear-gradient(
         90deg,
-        #050505 0 10px,
-        #15191a 10px 12px
+        rgba(39, 39, 34, 0.82) 0 11px,
+        rgba(246, 235, 200, 0.85) 11px 13px
       );
     }
 
     .run-hud__meter-fill {
       width: 100%;
       height: 100%;
-      background: #5feaff;
+      background-image: repeating-linear-gradient(
+        90deg,
+        #f2cf4b 0 11px,
+        #4b4034 11px 13px
+      );
       transform: scaleX(0);
       transform-origin: left center;
       transition: transform 0.12s linear;
-    }
-
-    .run-hud__meter--segmented .run-hud__meter-fill {
-      background-image: repeating-linear-gradient(
-        90deg,
-        #5feaff 0 10px,
-        #0f5d68 10px 12px
-      );
-    }
-
-    .run-hud__meter--boost .run-hud__meter-fill {
-      background: #fff05a;
-    }
-
-    .run-hud__sub {
-      text-align: right;
-    }
-
-    .run-hud__pilot {
-      display: grid;
-      grid-template-columns: 30px 1fr;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .run-hud__pilot-sprite {
-      width: 28px;
-      height: 28px;
-      image-rendering: pixelated;
-    }
-
-    .run-hud__block--bolt .run-hud__row strong {
-      color: #5feaff;
-    }
-
-    .run-hud[data-bolt="respawn"] .run-hud__block--bolt .run-hud__row strong {
-      color: #ff6b63;
-    }
-
-    .run-hud[data-bolt="boost"] .run-hud__block--bolt .run-hud__row strong,
-    .run-hud[data-boost="active"] .run-hud__block--pichan .run-hud__row strong {
-      color: #fff05a;
-    }
-
-    .run-hud__block--onion .run-hud__label,
-    .run-hud__block--onion .run-hud__pressure-grid span {
-      color: #ff6b63;
-    }
-
-    .run-hud__pressure-grid {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 6px 10px;
-      align-items: baseline;
-    }
-
-    .run-hud__pressure-grid strong {
-      color: #ffb3a8;
     }
 
     body.is-touch .players-panel {
@@ -369,7 +362,7 @@
     .continue-icon {
       width: 18px;
       height: 18px;
-      image-rendering: pixelated;
+      image-rendering: auto;
     }
 
     #play-again,
@@ -562,7 +555,7 @@
       left: 0;
       width: var(--loading-pi-size);
       height: auto;
-      image-rendering: pixelated;
+      image-rendering: auto;
     }
 
     #loading-overlay.visible #loading-pi {
@@ -790,7 +783,7 @@
     #level-onion {
       width: 54px;
       height: 54px;
-      image-rendering: pixelated;
+      image-rendering: auto;
     }
 
     #level-title {
@@ -834,18 +827,13 @@
 
     canvas#game {
       display: block;
-      width: min(100%, 100vh);
-      max-width: calc(100vw - 300px);
-      aspect-ratio: 1 / 1;
-      height: auto;
-      max-height: calc(100vh - 60px);
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      aspect-ratio: auto;
+      image-rendering: auto;
       touch-action: none;
-    }
-
-    #layout.has-players-panel canvas#game {
-      max-width: calc(100vw - 640px);
     }
 
     /* ------------------------------------------------------
@@ -980,81 +968,75 @@
       }
     }
 
-    /* Layout compatto */
-    @media (max-width: 900px) {
-      #layout {
-        gap: 0;
-        padding: 12px 10px 0;
-        align-items: center;
-        justify-content: flex-start;
-        flex-direction: column;
+    /* Layout compatto / mobile landscape preparation */
+    @media (max-width: 900px), (max-height: 620px) and (orientation: landscape) {
+      #layout,
+      #layout.has-players-panel {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-areas:
+          "hud"
+          "stage";
+        gap: 7px;
+        padding: 7px;
+        align-items: stretch;
       }
       .level-toast {
         top: 10px;
         font-size: 14px;
       }
       .run-hud {
-        order: -1;
-        width: min(614px, calc(100vw - 20px));
-        max-height: none !important;
-        margin-top: 0 !important;
-        margin-bottom: 8px;
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
-        padding: 8px;
-        font-size: 11px;
-      }
-      .run-hud__marquee,
-      .run-hud__block--wave,
-      .run-hud__block--onion {
-        grid-column: 1 / -1;
-      }
-      .run-hud__title {
-        font-size: 16px;
-      }
-      .run-hud__subtitle {
-        font-size: 9px;
+        min-height: 40px;
+        grid-template-columns: minmax(72px, 0.58fr) minmax(92px, 0.78fr) minmax(142px, 1.55fr);
+        gap: 5px;
+        padding: 6px;
+        border-width: 2px;
+        border-radius: 12px;
       }
       .run-hud__block {
-        padding: 7px;
+        padding: 6px 7px;
+        column-gap: 6px;
+        border-radius: 9px;
       }
-      .run-hud__row {
-        gap: 6px;
+      .run-hud__label {
+        font-size: 9px;
+        letter-spacing: 0;
       }
-      .run-hud__row strong {
-        font-size: 14px;
+      .run-hud__value {
+        font-size: clamp(15px, 4.2vw, 24px);
       }
-      .run-hud__level {
-        font-size: 32px;
+      .run-hud__meter {
+        height: 7px;
+        border-width: 1px;
       }
-      .run-hud__score {
-        font-size: 18px;
-      }
-      .run-hud__sub {
-        font-size: 10px;
-      }
-      .run-hud__pilot {
-        grid-template-columns: 24px 1fr;
-        gap: 6px;
-      }
-      .run-hud__pilot-sprite {
-        width: 22px;
-        height: 22px;
-      }
-      .run-hud__pressure-grid {
-        grid-template-columns: repeat(3, auto 1fr);
-        gap: 5px 6px;
+      #game-wrap {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
       }
       canvas#game {
-        max-width: calc(100vw - 20px);
-        max-height: calc(100vh - 132px);
-      }
-      #layout.has-players-panel canvas#game {
-        max-width: calc(100vw - 20px);
+        width: 100%;
+        height: 100%;
       }
       .players-panel {
         display: none !important;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .run-hud {
+        grid-template-columns: minmax(58px, 0.54fr) minmax(76px, 0.76fr) minmax(112px, 1.5fr);
+        gap: 4px;
+        padding: 5px;
+      }
+      .run-hud__block {
+        padding: 5px 6px;
+      }
+      .run-hud__label {
+        font-size: 8px;
+      }
+      .run-hud__value {
+        font-size: clamp(13px, 4vw, 18px);
       }
     }
 

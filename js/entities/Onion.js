@@ -33,15 +33,16 @@ export class Onion {
     this.state = ONION_STATE.RANDOM_MOVE;
     this.color = "#ff6347";
 
-    this.spriteIdle = this.#loadSprite("./assets/onion.small.png");
-    this.spriteRight = this.#loadSprite("./assets/onion_dx.small.png");
-    this.spriteLeft = this.#loadSprite("./assets/onion_sx.small.png");
-    this.spriteUp = this.#loadSprite("./assets/onion_up.small.png");
-    this.spriteDown = this.#loadSprite("./assets/onion_down.small.png");
-    this.spriteRightChase = this.#loadSprite("./assets/onion_dx.small_chase.png");
-    this.spriteLeftChase = this.#loadSprite("./assets/onion_sx.small_chase.png");
-    this.spriteUpChase = this.#loadSprite("./assets/onion_up.small_chase.png");
-    this.spriteDownChase = this.#loadSprite("./assets/onion_down.small_chase.png");
+    this.spriteIdle = this.#loadSprite("./assets/collage/onion_idle.png");
+    this.spriteRight = this.#loadSprite("./assets/collage/onion_idle.png");
+    this.spriteLeft = this.#loadSprite("./assets/collage/onion_idle.png");
+    this.spriteUp = this.#loadSprite("./assets/collage/onion_idle.png");
+    this.spriteDown = this.#loadSprite("./assets/collage/onion_idle.png");
+    this.spriteRightChase = this.#loadSprite("./assets/collage/onion_chase.png");
+    this.spriteLeftChase = this.#loadSprite("./assets/collage/onion_chase.png");
+    this.spriteUpChase = this.#loadSprite("./assets/collage/onion_chase.png");
+    this.spriteDownChase = this.#loadSprite("./assets/collage/onion_chase.png");
+    this.spriteDefeated = this.#loadSprite("./assets/collage/onion_defeated.png");
 
     this.sprite = this.spriteIdle.img;
     this.spriteReady = false;
@@ -73,7 +74,7 @@ export class Onion {
   }
 
   #loadSprite(path) {
-    const version = window.ASSET_VERSION;
+    const version = window.ASSET_VERSION || window.BUILD_VERSION;
     const separator = path.includes("?") ? "&" : "?";
     const src = version ? `${path}${separator}v=${version}` : path;
     const ref = getSprite(src);
@@ -446,8 +447,13 @@ export class Onion {
 
     const frameNow = now ?? performance.now();
     const renderAssets = typeof window !== "undefined" ? window.PICHAN_RENDER_ASSETS : null;
-    const pipelineSprite = renderAssets?.getImage?.("sprites.onionIdle") || null;
+    const pipelineSprite = this.dying
+      ? renderAssets?.getImage?.("sprites.onionDefeated")
+      : (this.state === ONION_STATE.CHASE_PICHAN
+        ? renderAssets?.getImage?.("sprites.onionChase")
+        : renderAssets?.getImage?.("sprites.onionIdle"));
     const boostRingSprite = renderAssets?.getImage?.("sprites.boostRing") || null;
+    const scoreStarSprite = renderAssets?.getImage?.("sprites.scoreStar") || null;
     ctx.save();
     const inChase = this.state === ONION_STATE.CHASE_PICHAN;
     const boosted = this.isSpeedBoosted(frameNow);
@@ -463,7 +469,7 @@ export class Onion {
     ctx.globalAlpha = alpha;
 
     const spriteScale = (typeof window !== "undefined" && window.SPRITE_SCALE) ? window.SPRITE_SCALE : 1;
-    const size = Math.round(this.r * 2.34 * this.drawScale * spriteScale);
+    const size = Math.round(this.r * 2.78 * this.drawScale * spriteScale);
     const wobble = Math.sin(this.wigglePhase) * 1.1;
 
     ctx.translate(this.x, this.y + wobble);
@@ -473,7 +479,10 @@ export class Onion {
     ctx.shadowColor = boosted ? "rgba(95, 235, 255, 0.72)" : (inChase ? 'rgba(255, 95, 95, 0.65)' : 'rgba(255, 170, 90, 0.28)');
     ctx.shadowBlur = boosted ? 14 : (inChase ? 10 : 5);
 
-    const sprite = pipelineSprite || (this.sprite && this.sprite.complete ? this.sprite : null);
+    const fallbackSprite = this.dying && this.spriteDefeated.loaded
+      ? this.spriteDefeated.img
+      : this.sprite;
+    const sprite = pipelineSprite || (fallbackSprite && fallbackSprite.complete ? fallbackSprite : null);
     if (sprite) {
       ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
     } else {
@@ -492,6 +501,15 @@ export class Onion {
       ctx.beginPath();
       ctx.arc(0, 2, size * 0.34, 0, Math.PI * 2);
       ctx.stroke();
+    }
+
+    if (this.dying && scoreStarSprite) {
+      const starSize = size * 0.42;
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.9;
+      ctx.rotate(-this.visualAngle);
+      ctx.drawImage(scoreStarSprite, size * 0.16, -size * 0.74, starSize, starSize);
+      ctx.restore();
     }
 
     if (boosted) {

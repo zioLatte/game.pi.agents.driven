@@ -23,11 +23,11 @@ export class Player {
     this.worldHeight = worldHeight;
     this.arena = null;
 
-    this.spriteIdle = this.#loadSprite("./assets/pi_chan_small.png");
-    this.spriteRight = this.#loadSprite("./assets/pi_chan_dx_small.png");
-    this.spriteLeft = this.#loadSprite("./assets/pi_chan_sx_small.png");
-    this.spriteUp = this.#loadSprite("./assets/pi_chan_up_small.png");
-    this.spriteDown = this.#loadSprite("./assets/pi_chan_down_small.png");
+    this.spriteIdle = this.#loadSprite("./assets/collage/player_idle.png");
+    this.spriteRight = this.#loadSprite("./assets/collage/player_right.png");
+    this.spriteLeft = this.#loadSprite("./assets/collage/player_left.png");
+    this.spriteUp = this.#loadSprite("./assets/collage/player_up.png");
+    this.spriteDown = this.#loadSprite("./assets/collage/player_down.png");
 
     this.sprite = this.spriteIdle.img;
     this.spriteLoaded = false;
@@ -54,7 +54,7 @@ export class Player {
   }
 
   #loadSprite(path) {
-    const version = window.ASSET_VERSION;
+    const version = window.ASSET_VERSION || window.BUILD_VERSION;
     const separator = path.includes("?") ? "&" : "?";
     const src = version ? `${path}${separator}v=${version}` : path;
     const ref = getSprite(src);
@@ -265,11 +265,20 @@ export class Player {
     const frameNow = now ?? performance.now();
     const boosted = this.isSpeedBoosted(frameNow);
     const renderAssets = typeof window !== "undefined" ? window.PICHAN_RENDER_ASSETS : null;
-    const pipelineSprite = renderAssets?.getImage?.("sprites.pichanIdle") || null;
+    const spriteKey = {
+      up: "sprites.pichanUp",
+      down: "sprites.pichanDown",
+      left: "sprites.pichanLeft",
+      right: "sprites.pichanRight",
+      idle: "sprites.pichanIdle"
+    }[this.currentDirection] || "sprites.pichanIdle";
+    const pipelineSprite = renderAssets?.getImage?.(spriteKey)
+      || renderAssets?.getImage?.("sprites.pichanIdle")
+      || null;
     const boostRingSprite = renderAssets?.getImage?.("sprites.boostRing") || null;
 
     const spriteScale = (typeof window !== "undefined" && window.SPRITE_SCALE) ? window.SPRITE_SCALE : 1;
-    const baseSize = Math.round(this.r * 3.15 * spriteScale);
+    const baseSize = Math.round(this.r * 3.45 * spriteScale);
     const hoverOffset = Math.sin(this.hoverTime) * 1.6;
     const squashX = 1 + this.squash * 0.35;
     const squashY = 1 - this.squash * 0.3;

@@ -26,10 +26,10 @@ let loadingPiDirection = 1;
 let loadingPiAnimHandler = null;
 let loadingPiCycleId = null;
 const loadingPiIdleSprites = [
-  "./assets/pi_chan_down_small.png",
-  "./assets/pi_chan_sx_small.png",
-  "./assets/pi_chan_up_small.png",
-  "./assets/pi_chan_dx_small.png"
+  "./assets/collage/player_down.png",
+  "./assets/collage/player_left.png",
+  "./assets/collage/player_up.png",
+  "./assets/collage/player_right.png"
 ];
 const stopLoadingPiCycle = () => {
   if (loadingPiCycleId) {
@@ -111,8 +111,8 @@ const preloadScriptsAndStart = async (versionValue) => {
     loadingBox.classList.remove("loading-ready");
   }
   if (loadingPi) {
-    const rightSrc = "./assets/pi_chan_dx_small.png";
-    const leftSrc = "./assets/pi_chan_sx_small.png";
+    const rightSrc = "./assets/collage/player_right.png";
+    const leftSrc = "./assets/collage/player_left.png";
     loadingPiDirection = 1;
     loadingPi.src = rightSrc;
     loadingPi.style.left = "";
@@ -172,7 +172,7 @@ const preloadScriptsAndStart = async (versionValue) => {
     loadingBox.classList.add("loading-ready");
   }
   if (loadingPi) {
-    loadingPi.src = "./assets/pi_chan_down_small.png";
+    loadingPi.src = "./assets/collage/player_down.png";
     loadingPi.style.animation = "";
     loadingPi.classList.add("loading-pi--idle");
     stopLoadingPiCycle();

@@ -60,7 +60,7 @@
   <div id="loading-overlay" role="dialog" aria-modal="true">
     <div id="loading-box">
       <div id="loading-pi-runner" aria-hidden="true">
-        <img id="loading-pi" src="assets/pi_chan_dx_small.png" alt="" />
+        <img id="loading-pi" src="assets/collage/player_right.png" alt="" />
       </div>
       <div id="loading-spinner" aria-hidden="true"></div>
       <div id="loading-status"></div>
@@ -113,62 +113,23 @@
       <canvas id="game" width="614" height="614"></canvas>
     </div>
     <aside id="run-hud" class="run-hud" aria-label="Run status">
-      <div class="run-hud__marquee">
-        <div class="run-hud__title">ZIO LATTE!</div>
-        <div class="run-hud__subtitle">PI-CHAN</div>
-      </div>
-
       <div class="run-hud__block run-hud__block--level">
-        <div class="run-hud__label">LV</div>
-        <strong id="run-hud-level" class="run-hud__level">1</strong>
-      </div>
-
-      <div class="run-hud__block run-hud__block--score">
-        <div class="run-hud__label">OPINION</div>
-        <strong id="run-hud-opinion" class="run-hud__score">00000</strong>
-      </div>
-
-      <div class="run-hud__block run-hud__block--wave">
-        <div class="run-hud__row">
-          <span class="run-hud__label">NEXT WAVE</span>
-          <strong id="run-hud-wave-text">0 / 0</strong>
-        </div>
-        <div id="run-hud-wave-state" class="run-hud__sub">0%</div>
-        <div class="run-hud__meter run-hud__meter--segmented" aria-hidden="true">
-          <div id="run-hud-wave-bar" class="run-hud__meter-fill"></div>
-        </div>
-      </div>
-
-      <div class="run-hud__block run-hud__block--pichan">
-        <div class="run-hud__row">
-          <span class="run-hud__label">PI-CHAN</span>
-          <strong id="run-hud-boost">READY</strong>
-        </div>
-        <div class="run-hud__pilot">
-          <img class="run-hud__pilot-sprite" src="assets/pi_chan_dx_small.png" alt="" />
-          <div class="run-hud__meter run-hud__meter--boost" aria-hidden="true">
-            <div id="run-hud-boost-bar" class="run-hud__meter-fill"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="run-hud__block run-hud__block--bolt">
-        <div class="run-hud__row">
-          <span class="run-hud__label">BOLT</span>
-          <strong id="run-hud-dot">READY</strong>
-        </div>
-        <div id="run-hud-dot-timer" class="run-hud__sub">READY</div>
+        <span class="run-hud__label">LEVEL</span>
+        <strong id="run-hud-level" class="run-hud__value">1</strong>
       </div>
 
       <div class="run-hud__block run-hud__block--onion">
-        <div class="run-hud__label">ONION PRESSURE</div>
-        <div class="run-hud__pressure-grid" aria-label="Onion pressure details">
-          <span>ACTIVE</span>
-          <strong id="run-hud-onions">0 / 0</strong>
-          <span>LEFT</span>
-          <strong id="run-hud-onions-left">0</strong>
-          <span>QUEUE</span>
-          <strong id="run-hud-queued">0</strong>
+        <span class="run-hud__label">OPINIONS</span>
+        <strong id="run-hud-onions" class="run-hud__value">0 / 0</strong>
+      </div>
+
+      <div class="run-hud__block run-hud__block--wave">
+        <div class="run-hud__metric-row">
+          <span class="run-hud__label">NEXT WAVE</span>
+          <strong id="run-hud-wave-text" class="run-hud__value">0 / 0</strong>
+        </div>
+        <div class="run-hud__meter run-hud__meter--segmented" aria-hidden="true">
+          <div id="run-hud-wave-bar" class="run-hud__meter-fill"></div>
         </div>
       </div>
     </aside>
@@ -192,7 +153,7 @@
   </div>
 
   <script>
-    window.BUILD_VERSION = "2026.03.21.1";
+    window.BUILD_VERSION = "2026.05.23.6-collage-sheet-assets";
     const loaderScript = document.createElement("script");
     loaderScript.type = "module";
     loaderScript.src = `js/loader.js?v=${encodeURIComponent(window.BUILD_VERSION)}`;

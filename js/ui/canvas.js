@@ -7,30 +7,42 @@ export function fixCanvasDPI(canvas, ctx) {
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 }
 
 export function sizeCanvasToLayout(canvas, layoutEl, gameWrapEl) {
   if (!canvas) return;
-  const layoutStyle = layoutEl ? getComputedStyle(layoutEl) : null;
-  const wrapStyle = gameWrapEl ? getComputedStyle(gameWrapEl) : null;
-  const paddingX = layoutStyle
-    ? parseFloat(layoutStyle.paddingLeft) + parseFloat(layoutStyle.paddingRight)
-    : 0;
-  const paddingY = layoutStyle
-    ? parseFloat(layoutStyle.paddingTop) + parseFloat(layoutStyle.paddingBottom)
-    : 0;
-  const gapY = wrapStyle
-    ? parseFloat(wrapStyle.rowGap || wrapStyle.gap || "0")
-    : 0;
-  const availableWidth = Math.max(200, window.innerWidth - paddingX);
-  const availableHeight = Math.max(200, window.innerHeight - paddingY - gapY);
-  const maxHeight = Math.max(200, window.innerHeight * 0.9);
-  const size = Math.floor(Math.min(availableWidth, maxHeight, availableHeight));
-  canvas.style.width = `${size}px`;
-  canvas.style.height = `${size}px`;
+
+  const targetEl = gameWrapEl || canvas.parentElement || layoutEl || document.body;
+  const targetRect = targetEl.getBoundingClientRect();
+  const targetStyle = getComputedStyle(targetEl);
+  const paddingX = parseFloat(targetStyle.paddingLeft || "0") + parseFloat(targetStyle.paddingRight || "0");
+  const paddingY = parseFloat(targetStyle.paddingTop || "0") + parseFloat(targetStyle.paddingBottom || "0");
+
+  let width = Math.floor(targetRect.width - paddingX);
+  let height = Math.floor(targetRect.height - paddingY);
+
+  if (!Number.isFinite(width) || width < 240 || !Number.isFinite(height) || height < 160) {
+    const layoutStyle = layoutEl ? getComputedStyle(layoutEl) : null;
+    const layoutPaddingX = layoutStyle
+      ? parseFloat(layoutStyle.paddingLeft || "0") + parseFloat(layoutStyle.paddingRight || "0")
+      : 0;
+    const layoutPaddingY = layoutStyle
+      ? parseFloat(layoutStyle.paddingTop || "0") + parseFloat(layoutStyle.paddingBottom || "0")
+      : 0;
+    width = Math.floor(window.innerWidth - layoutPaddingX);
+    height = Math.floor(window.innerHeight - layoutPaddingY);
+  }
+
+  width = Math.max(240, width);
+  height = Math.max(160, height);
+
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+
   if (gameWrapEl) {
-    gameWrapEl.style.marginTop = "1vh";
+    gameWrapEl.style.marginTop = "0";
   }
 }
 
@@ -49,57 +61,58 @@ export function buildBackground(width, height) {
   bg.width = Math.max(1, Math.floor(width));
   bg.height = Math.max(1, Math.floor(height));
   const bctx = bg.getContext("2d");
-  bctx.imageSmoothingEnabled = false;
+  bctx.imageSmoothingEnabled = true;
+  bctx.imageSmoothingQuality = "high";
 
-  const base = bctx.createLinearGradient(0, 0, 0, height);
-  base.addColorStop(0, "#2a2923");
-  base.addColorStop(0.58, "#1f211d");
-  base.addColorStop(1, "#151712");
-  bctx.fillStyle = base;
+  const wood = bctx.createLinearGradient(0, 0, width, height);
+  wood.addColorStop(0, "#7a4b26");
+  wood.addColorStop(0.32, "#9b6435");
+  wood.addColorStop(0.67, "#6b3f21");
+  wood.addColorStop(1, "#a16a39");
+  bctx.fillStyle = wood;
   bctx.fillRect(0, 0, width, height);
 
   bctx.save();
-  bctx.globalAlpha = 0.36;
-  bctx.fillStyle = "#34302a";
-  for (let y = 0; y < height; y += 32) {
-    bctx.fillRect(0, y, width, 3);
-  }
-  bctx.globalAlpha = 0.28;
-  bctx.fillStyle = "#0d0f0c";
-  for (let x = -height; x < width; x += 52) {
+  bctx.globalAlpha = 0.24;
+  for (let y = -height; y < height * 2; y += 30) {
+    bctx.strokeStyle = y % 90 === 0 ? "rgba(255, 219, 157, 0.22)" : "rgba(54, 28, 12, 0.24)";
+    bctx.lineWidth = y % 90 === 0 ? 2 : 1;
     bctx.beginPath();
-    bctx.moveTo(x, height);
-    bctx.lineTo(x + height * 0.34, 0);
-    bctx.lineTo(x + height * 0.34 + 3, 0);
-    bctx.lineTo(x + 3, height);
-    bctx.closePath();
-    bctx.fill();
+    bctx.moveTo(0, y + 0.5);
+    bctx.bezierCurveTo(width * 0.25, y + 10, width * 0.55, y - 12, width, y + 7);
+    bctx.stroke();
   }
   bctx.restore();
 
   bctx.save();
-  bctx.globalAlpha = 0.42;
-  bctx.fillStyle = "#2b2b2b";
-  const roadWidth = Math.max(70, width * 0.16);
-  bctx.fillRect(width * 0.5 - roadWidth * 0.5, 0, roadWidth, height);
-  bctx.fillStyle = "#d9c864";
-  for (let y = -18; y < height; y += 54) {
-    bctx.fillRect(width * 0.5 - 3, y, 6, 22);
+  bctx.globalAlpha = 0.18;
+  for (let i = 0; i < 12; i += 1) {
+    const x = Math.random() * width;
+    const y = Math.random() * height;
+    const r = 18 + Math.random() * 46;
+    const stain = bctx.createRadialGradient(x, y, 0, x, y, r);
+    stain.addColorStop(0, "rgba(38, 18, 6, 0.35)");
+    stain.addColorStop(1, "rgba(38, 18, 6, 0)");
+    bctx.fillStyle = stain;
+    bctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  bctx.fillStyle = "rgba(255, 255, 255, 0.14)";
-  bctx.fillRect(width * 0.5 - roadWidth * 0.5 + 6, 0, 3, height);
-  bctx.fillRect(width * 0.5 + roadWidth * 0.5 - 9, 0, 3, height);
   bctx.restore();
 
   bctx.save();
-  const vignette = bctx.createRadialGradient(
-    width * 0.5, height * 0.5, Math.min(width, height) * 0.24,
-    width * 0.5, height * 0.5, Math.max(width, height) * 0.72
-  );
-  vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
-  vignette.addColorStop(1, "rgba(0, 0, 0, 0.42)");
-  bctx.fillStyle = vignette;
-  bctx.fillRect(0, 0, width, height);
+  bctx.globalAlpha = 0.12;
+  bctx.fillStyle = "#f1dfb5";
+  const scrapCount = Math.max(3, Math.floor(Math.min(width, height) / 180));
+  for (let i = 0; i < scrapCount; i += 1) {
+    const sw = 40 + Math.random() * 90;
+    const sh = 22 + Math.random() * 56;
+    const x = Math.random() < 0.5 ? Math.random() * 60 : width - sw - Math.random() * 60;
+    const y = Math.random() * Math.max(1, height - sh);
+    bctx.save();
+    bctx.translate(x + sw * 0.5, y + sh * 0.5);
+    bctx.rotate((Math.random() - 0.5) * 0.45);
+    bctx.fillRect(-sw * 0.5, -sh * 0.5, sw, sh);
+    bctx.restore();
+  }
   bctx.restore();
 
   return bg;

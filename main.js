@@ -55,17 +55,9 @@ const levelupSfxEl = document.getElementById("levelup-sfx");
 const playersPanelEl = document.getElementById("players-panel");
 const runHudEl = document.getElementById("run-hud");
 const runHudLevelEl = document.getElementById("run-hud-level");
-const runHudOpinionEl = document.getElementById("run-hud-opinion");
 const runHudWaveTextEl = document.getElementById("run-hud-wave-text");
-const runHudWaveStateEl = document.getElementById("run-hud-wave-state");
 const runHudWaveBarEl = document.getElementById("run-hud-wave-bar");
 const runHudOnionsEl = document.getElementById("run-hud-onions");
-const runHudOnionsLeftEl = document.getElementById("run-hud-onions-left");
-const runHudQueuedEl = document.getElementById("run-hud-queued");
-const runHudBoostEl = document.getElementById("run-hud-boost");
-const runHudBoostBarEl = document.getElementById("run-hud-boost-bar");
-const runHudDotEl = document.getElementById("run-hud-dot");
-const runHudDotTimerEl = document.getElementById("run-hud-dot-timer");
 const levelToastEl = document.getElementById("level-toast");
 const touchControlsEl = document.getElementById("touch-controls");
 const touchFireBtnEl = document.getElementById("touch-fire");
@@ -394,62 +386,20 @@ function showLevelToast(level) {
   }, LEVEL_TOAST_DURATION_MS);
 }
 
-function formatArcadeCounter(value, width = 5) {
-  const numericValue = Math.max(0, Math.floor(Number(value) || 0));
-  return String(numericValue).padStart(width, "0");
-}
-
 function formatHudRatio(value) {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue)) return 0;
   return Math.max(0, Math.min(1, numericValue));
 }
 
-function formatHudSeconds(ms) {
-  const numericValue = Math.max(0, Number(ms) || 0);
-  return `${Math.ceil(numericValue / 1000)}s`;
-}
-
-function resolveBoltHudStatus(speedDotStatus, boostRatio) {
-  if (boostRatio > 0) return "BOOST";
-  if (speedDotStatus?.state === "ACTIVE") return "ACTIVE";
-  if ((speedDotStatus?.remainingMs ?? 0) > 0) return "RESPAWN";
-  return "READY";
-}
-
 function updateRunHud() {
   const progress = levelManager.getWaveProgress();
   const progressRatio = formatHudRatio(progress.progressRatio);
-  const percent = Math.round(progressRatio * 100);
-  const now = performance.now();
-  const boostRatio = formatHudRatio(player?.getSpeedBoostRemainingRatio?.(now) ?? 0);
-  const speedDotStatus = levelManager.getSpeedDotStatus?.(now) ?? null;
-  const boltStatus = resolveBoltHudStatus(speedDotStatus, boostRatio);
 
   if (runHudLevelEl) runHudLevelEl.textContent = String(progress.currentLevel);
-  if (runHudOpinionEl) runHudOpinionEl.textContent = formatArcadeCounter(state.score);
-  if (runHudWaveTextEl) runHudWaveTextEl.textContent = `${progress.clearedOnions} / ${progress.totalOnions}`;
-  if (runHudWaveStateEl) runHudWaveStateEl.textContent = progress.isComplete ? "CLEAR" : `${percent}%`;
-  if (runHudWaveBarEl) runHudWaveBarEl.style.transform = `scaleX(${progressRatio})`;
   if (runHudOnionsEl) runHudOnionsEl.textContent = `${progress.activePressureCount} / ${progress.maxAliveOnions}`;
-  if (runHudOnionsLeftEl) runHudOnionsLeftEl.textContent = String(progress.remainingOnions);
-  if (runHudQueuedEl) runHudQueuedEl.textContent = String(progress.queuedOnions);
-  if (runHudBoostEl) runHudBoostEl.textContent = boostRatio > 0 ? `BOOST ${Math.ceil(boostRatio * 100)}%` : "READY";
-  if (runHudBoostBarEl) runHudBoostBarEl.style.transform = `scaleX(${boostRatio})`;
-  if (runHudDotEl) runHudDotEl.textContent = boltStatus;
-  if (runHudDotTimerEl) {
-    if (boltStatus === "BOOST") {
-      runHudDotTimerEl.textContent = `PI ${Math.ceil(boostRatio * 100)}%`;
-    } else if (boltStatus === "RESPAWN") {
-      runHudDotTimerEl.textContent = `IN ${formatHudSeconds(speedDotStatus.remainingMs)}`;
-    } else {
-      runHudDotTimerEl.textContent = boltStatus === "ACTIVE" ? "IN FIELD" : "READY";
-    }
-  }
-  if (runHudEl) {
-    runHudEl.dataset.bolt = boltStatus.toLowerCase();
-    runHudEl.dataset.boost = boostRatio > 0 ? "active" : "ready";
-  }
+  if (runHudWaveTextEl) runHudWaveTextEl.textContent = `${progress.clearedOnions} / ${progress.totalOnions}`;
+  if (runHudWaveBarEl) runHudWaveBarEl.style.transform = `scaleX(${progressRatio})`;
 }
 
 function stopAllAudio() {
@@ -777,7 +727,7 @@ function updateContinueButton() {
     }
     for (let i = 0; i < remaining; i += 1) {
       const img = document.createElement("img");
-      const src = withAssetVersion("./assets/pi_chan_small.png");
+      const src = withAssetVersion("./assets/collage/player_idle.png");
       img.src = src;
       img.alt = "Continue";
       img.className = "continue-icon";
@@ -800,11 +750,11 @@ function updateContinueButton() {
 function preloadLevelOnionSprites() {
   if (levelOnionPreloadPromise) return levelOnionPreloadPromise;
   const rightSrc = window.withAssetVersion
-    ? window.withAssetVersion("./assets/onion_dx.small.png")
-    : "./assets/onion_dx.small.png";
+    ? window.withAssetVersion("./assets/collage/onion_chase.png")
+    : "./assets/collage/onion_chase.png";
   const leftSrc = window.withAssetVersion
-    ? window.withAssetVersion("./assets/onion_sx.small.png")
-    : "./assets/onion_sx.small.png";
+    ? window.withAssetVersion("./assets/collage/onion_idle.png")
+    : "./assets/collage/onion_idle.png";
   levelOnionPreloadPromise = preloadImages([rightSrc, leftSrc]).then(() => {
     levelOnionPreloadDone = true;
   });
@@ -817,11 +767,11 @@ function showLevelOverlay(level) {
   levelOverlayPending = true;
 
   const rightSrc = window.withAssetVersion
-    ? window.withAssetVersion("./assets/onion_dx.small.png")
-    : "./assets/onion_dx.small.png";
+    ? window.withAssetVersion("./assets/collage/onion_chase.png")
+    : "./assets/collage/onion_chase.png";
   const leftSrc = window.withAssetVersion
-    ? window.withAssetVersion("./assets/onion_sx.small.png")
-    : "./assets/onion_sx.small.png";
+    ? window.withAssetVersion("./assets/collage/onion_idle.png")
+    : "./assets/collage/onion_idle.png";
 
   const applyOverlay = () => {
     levelOverlayPending = false;
@@ -931,8 +881,8 @@ function updatePlayersPanelAlignment() {
   const panelHeight = `${Math.max(0, Math.round(canvasRect.height))}px`;
 
   if (runHudEl) {
-    runHudEl.style.marginTop = `${offsetTop}px`;
-    runHudEl.style.maxHeight = panelHeight;
+    runHudEl.style.marginTop = "0";
+    runHudEl.style.maxHeight = "none";
   }
   if (playersPanelEl && onlineService.hasPlayersPanel) {
     playersPanelEl.style.marginTop = `${offsetTop}px`;
@@ -963,6 +913,22 @@ function fillTexturedRect(ctx, assetId, x, y, width, height) {
   return true;
 }
 
+function drawImageCover(ctx, image, x, y, width, height) {
+  if (!ctx || !image || width <= 0 || height <= 0) return false;
+
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  if (!sourceWidth || !sourceHeight) return false;
+
+  const scale = Math.max(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  const dx = x + (width - drawWidth) * 0.5;
+  const dy = y + (height - drawHeight) * 0.5;
+  ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
+  return true;
+}
+
 function drawArenaPath(ctx, points) {
   if (!points?.length) return;
   ctx.beginPath();
@@ -973,68 +939,98 @@ function drawArenaPath(ctx, points) {
   ctx.closePath();
 }
 
-function drawFallbackAsphalt(ctx, x, y, width, height) {
-  ctx.save();
-  const road = ctx.createLinearGradient(x, y, x, y + height);
-  road.addColorStop(0, "#30302f");
-  road.addColorStop(1, "#1b1c1b");
-  ctx.fillStyle = road;
-  ctx.fillRect(x, y, width, height);
-  ctx.fillStyle = "rgba(255, 246, 190, 0.68)";
-  const dashW = Math.max(4, Math.floor(Math.min(width, height) * 0.04));
-  if (height >= width) {
-    const cx = x + width * 0.5 - dashW * 0.5;
-    for (let yy = y + 8; yy < y + height; yy += 44) ctx.fillRect(cx, yy, dashW, 20);
-  } else {
-    const cy = y + height * 0.5 - dashW * 0.5;
-    for (let xx = x + 8; xx < x + width; xx += 44) ctx.fillRect(xx, cy, 20, dashW);
-  }
-  ctx.restore();
+function roundedRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.max(0, Math.min(radius, Math.abs(width) * 0.5, Math.abs(height) * 0.5));
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
 function drawOutsideTerrain(ctx) {
-  const dirtReady = fillTexturedRect(ctx, "tiles.outsideDirt", 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-  if (!dirtReady) {
-    if (backgroundCanvas) {
-      ctx.drawImage(backgroundCanvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    } else {
-      ctx.fillStyle = "#1c1d18";
-      ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    }
-  }
-
-  const laneW = Math.max(58, WORLD_WIDTH * 0.15);
-  const laneH = Math.max(58, WORLD_HEIGHT * 0.15);
-  const asphaltReady = getRenderAssetImage("tiles.outsideAsphalt");
-  if (asphaltReady) {
-    fillTexturedRect(ctx, "tiles.outsideAsphalt", WORLD_WIDTH * 0.5 - laneW * 0.5, 0, laneW, WORLD_HEIGHT);
-    fillTexturedRect(ctx, "tiles.outsideAsphalt", 0, WORLD_HEIGHT * 0.5 - laneH * 0.5, WORLD_WIDTH, laneH);
+  if (backgroundCanvas) {
+    ctx.drawImage(backgroundCanvas, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
   } else {
-    drawFallbackAsphalt(ctx, WORLD_WIDTH * 0.5 - laneW * 0.5, 0, laneW, WORLD_HEIGHT);
-    drawFallbackAsphalt(ctx, 0, WORLD_HEIGHT * 0.5 - laneH * 0.5, WORLD_WIDTH, laneH);
+    ctx.fillStyle = "#111426";
+    ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
   }
-}
-
-function drawFallbackArenaFloor(ctx) {
-  ctx.fillStyle = "#111517";
-  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
   ctx.save();
-  ctx.globalAlpha = 0.42;
-  ctx.strokeStyle = "#283034";
+  ctx.globalAlpha = 0.13;
+  ctx.strokeStyle = "#fff1ad";
   ctx.lineWidth = 1;
-  for (let x = 0; x <= WORLD_WIDTH; x += 32) {
+  const step = Math.max(52, Math.min(76, Math.floor(Math.min(WORLD_WIDTH, WORLD_HEIGHT) * 0.085)));
+  for (let x = 0; x <= WORLD_WIDTH; x += step) {
     ctx.beginPath();
     ctx.moveTo(x + 0.5, 0);
     ctx.lineTo(x + 0.5, WORLD_HEIGHT);
     ctx.stroke();
   }
-  for (let y = 0; y <= WORLD_HEIGHT; y += 32) {
+  for (let y = 0; y <= WORLD_HEIGHT; y += step) {
     ctx.beginPath();
     ctx.moveTo(0, y + 0.5);
     ctx.lineTo(WORLD_WIDTH, y + 0.5);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawFallbackArenaFloor(ctx) {
+  ctx.fillStyle = "#ddd2bc";
+  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+  const grid = Math.max(18, Math.min(28, Math.floor(Math.min(WORLD_WIDTH, WORLD_HEIGHT) * 0.035)));
+
+  ctx.save();
+  ctx.globalAlpha = 0.34;
+  ctx.strokeStyle = "#8da6b3";
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= WORLD_WIDTH; x += grid) {
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, WORLD_HEIGHT);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= WORLD_HEIGHT; y += grid) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(WORLD_WIDTH, y + 0.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = "#6b5f52";
+  ctx.lineWidth = 2;
+  const creaseCount = Math.max(7, Math.floor((WORLD_WIDTH + WORLD_HEIGHT) / 180));
+  for (let i = 0; i < creaseCount; i += 1) {
+    const x = Math.random() * WORLD_WIDTH;
+    const y = Math.random() * WORLD_HEIGHT;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (Math.random() - 0.5) * 96, y + (Math.random() - 0.5) * 96);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  const vignette = ctx.createRadialGradient(
+    WORLD_WIDTH * 0.5, WORLD_HEIGHT * 0.42, Math.min(WORLD_WIDTH, WORLD_HEIGHT) * 0.16,
+    WORLD_WIDTH * 0.5, WORLD_HEIGHT * 0.5, Math.max(WORLD_WIDTH, WORLD_HEIGHT) * 0.72
+  );
+  vignette.addColorStop(0, "rgba(255, 248, 218, 0.10)");
+  vignette.addColorStop(0.64, "rgba(0, 0, 0, 0)");
+  vignette.addColorStop(1, "rgba(89, 62, 38, 0.18)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
   ctx.restore();
 }
 
@@ -1044,9 +1040,23 @@ function drawArenaFloor(ctx, arena) {
   ctx.save();
   drawArenaPath(ctx, arena.points);
   ctx.clip();
-  if (!fillTexturedRect(ctx, "tiles.arenaFloor", 0, 0, WORLD_WIDTH, WORLD_HEIGHT)) {
+  const paperImage = getRenderAssetImage("tiles.arenaFloor");
+  if (!drawImageCover(ctx, paperImage, 0, 0, WORLD_WIDTH, WORLD_HEIGHT)) {
     drawFallbackArenaFloor(ctx);
   }
+  ctx.restore();
+}
+
+function drawArenaPaperDecoration(ctx, arena) {
+  const stainImage = getRenderAssetImage("tiles.purpleStain");
+  if (!arena?.points?.length || !stainImage) return;
+
+  const size = Math.max(58, Math.min(98, Math.min(WORLD_WIDTH, WORLD_HEIGHT) * 0.13));
+  ctx.save();
+  drawArenaPath(ctx, arena.points);
+  ctx.clip();
+  ctx.globalAlpha = 0.22;
+  ctx.drawImage(stainImage, WORLD_WIDTH - size * 1.35, WORLD_HEIGHT - size * 1.25, size, size * 0.9);
   ctx.restore();
 }
 
@@ -1054,12 +1064,29 @@ function drawWallRun(ctx, startX, width, thickness) {
   if (width <= 0) return;
   if (fillTexturedRect(ctx, "tiles.wallStraight", startX, -thickness * 0.5, width, thickness)) return;
 
-  ctx.fillStyle = "#68645e";
-  ctx.fillRect(startX, -thickness * 0.5, width, thickness);
-  ctx.fillStyle = "#949085";
-  ctx.fillRect(startX, -thickness * 0.5, width, 3);
-  ctx.fillStyle = "#30302d";
-  ctx.fillRect(startX, thickness * 0.5 - 4, width, 4);
+  const y = -thickness * 0.5;
+  const r = Math.min(thickness * 0.32, 8);
+
+  ctx.save();
+  roundedRectPath(ctx, startX, y, width, thickness, r);
+  const wall = ctx.createLinearGradient(0, y, 0, y + thickness);
+  wall.addColorStop(0, "#7d7890");
+  wall.addColorStop(0.38, "#4a4a60");
+  wall.addColorStop(1, "#272939");
+  ctx.fillStyle = wall;
+  ctx.fill();
+
+  ctx.globalAlpha = 0.58;
+  ctx.fillStyle = "#fff0b1";
+  roundedRectPath(ctx, startX + 3, y + 3, Math.max(0, width - 6), Math.max(1, thickness * 0.18), r * 0.5);
+  ctx.fill();
+
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#10111e";
+  roundedRectPath(ctx, startX, y, width, thickness, r);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawGate(ctx, gate, thickness) {
@@ -1078,18 +1105,50 @@ function drawGate(ctx, gate, thickness) {
     return;
   }
 
+  const gateWidth = gate.length;
+  const gateHeight = thickness * 1.22;
+  const r = Math.min(10, gateHeight * 0.34);
+
   ctx.save();
   ctx.translate(gate.x, gate.y);
   ctx.rotate(gate.angle);
-  ctx.fillStyle = "#191b1d";
-  ctx.fillRect(-gate.length * 0.5, -thickness * 0.62, gate.length, thickness * 1.24);
-  ctx.fillStyle = "#f1cf68";
-  for (let x = -gate.length * 0.5 + 8; x < gate.length * 0.5 - 6; x += 16) {
-    ctx.fillRect(x, -thickness * 0.42, 7, thickness * 0.84);
+
+  ctx.shadowColor = "rgba(0, 0, 0, 0.36)";
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
+  roundedRectPath(ctx, -gateWidth * 0.5, -gateHeight * 0.5, gateWidth, gateHeight, r);
+  ctx.fillStyle = "#34304d";
+  ctx.fill();
+
+  ctx.shadowColor = "transparent";
+  roundedRectPath(ctx, -gateWidth * 0.5 + 4, -gateHeight * 0.5 + 4, gateWidth - 8, gateHeight - 8, Math.max(3, r - 3));
+  const inset = ctx.createLinearGradient(0, -gateHeight * 0.5, 0, gateHeight * 0.5);
+  inset.addColorStop(0, "#6b6388");
+  inset.addColorStop(0.5, "#403b61");
+  inset.addColorStop(1, "#252842");
+  ctx.fillStyle = inset;
+  ctx.fill();
+
+  ctx.fillStyle = "#ffe27a";
+  const toothCount = Math.max(3, Math.floor(gateWidth / 18));
+  const toothGap = gateWidth / (toothCount + 1);
+  for (let i = 1; i <= toothCount; i += 1) {
+    const x = -gateWidth * 0.5 + toothGap * i;
+    roundedRectPath(ctx, x - 3.2, -gateHeight * 0.28, 6.4, gateHeight * 0.56, 2.5);
+    ctx.fill();
   }
-  ctx.strokeStyle = "#0a0a0a";
+
   ctx.lineWidth = 2;
-  ctx.strokeRect(-gate.length * 0.5, -thickness * 0.62, gate.length, thickness * 1.24);
+  ctx.strokeStyle = "#11111e";
+  roundedRectPath(ctx, -gateWidth * 0.5, -gateHeight * 0.5, gateWidth, gateHeight, r);
+  ctx.stroke();
+
+  ctx.globalAlpha = 0.52;
+  ctx.strokeStyle = "#fff4ba";
+  ctx.beginPath();
+  ctx.moveTo(-gateWidth * 0.5 + 9, -gateHeight * 0.5 + 5);
+  ctx.lineTo(gateWidth * 0.5 - 9, -gateHeight * 0.5 + 5);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1100,11 +1159,24 @@ function drawWallCorner(ctx, x, y, size) {
   if (image) {
     ctx.drawImage(image, -size * 0.5, -size * 0.5, size, size);
   } else {
-    ctx.fillStyle = "#7a766e";
-    ctx.fillRect(-size * 0.5, -size * 0.5, size, size);
-    ctx.strokeStyle = "#292a28";
+    const box = size * 1.02;
+    roundedRectPath(ctx, -box * 0.5, -box * 0.5, box, box, Math.max(4, size * 0.18));
+    const corner = ctx.createLinearGradient(0, -box * 0.5, 0, box * 0.5);
+    corner.addColorStop(0, "#aaa37f");
+    corner.addColorStop(0.45, "#6d6874");
+    corner.addColorStop(1, "#35364a");
+    ctx.fillStyle = corner;
+    ctx.fill();
+
     ctx.lineWidth = 2;
-    ctx.strokeRect(-size * 0.5, -size * 0.5, size, size);
+    ctx.strokeStyle = "#11111e";
+    roundedRectPath(ctx, -box * 0.5, -box * 0.5, box, box, Math.max(4, size * 0.18));
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.52;
+    ctx.fillStyle = "#fff0b1";
+    roundedRectPath(ctx, -box * 0.33, -box * 0.34, box * 0.66, box * 0.16, 3);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -1114,8 +1186,8 @@ function drawArenaWallsAndGates(ctx, arena, gates) {
   const thickness = Math.max(14, Math.min(22, WORLD_WIDTH * 0.032));
 
   ctx.save();
-  ctx.shadowColor = "rgba(0, 0, 0, 0.48)";
-  ctx.shadowBlur = 8;
+  ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
+  ctx.shadowBlur = 10;
   for (const gate of gates) {
     const gap = gate.length;
     const leftWidth = (gate.wallLength - gap) * 0.5;
@@ -1410,6 +1482,7 @@ function draw(now) {
 
     drawOutsideTerrain(ctx);
     drawArenaFloor(ctx, arena);
+    drawArenaPaperDecoration(ctx, arena);
     drawQueuedOnionPreviews(ctx, gates, progress, now);
 
     ctx.save();
@@ -1466,20 +1539,22 @@ if (mobileWarningEl) {
   mobileWarningEl.classList.remove("visible");
 }
 const ASSET_IMAGES = [
-  "./assets/pi_chan_small.png",
-  "./assets/pi_chan_dx_small.png",
-  "./assets/pi_chan_sx_small.png",
-  "./assets/pi_chan_up_small.png",
-  "./assets/pi_chan_down_small.png",
-  "./assets/onion.small.png",
-  "./assets/onion_dx.small.png",
-  "./assets/onion_sx.small.png",
-  "./assets/onion_up.small.png",
-  "./assets/onion_down.small.png",
-  "./assets/onion_dx.small_chase.png",
-  "./assets/onion_sx.small_chase.png",
-  "./assets/onion_up.small_chase.png",
-  "./assets/onion_down.small_chase.png"
+  "./assets/collage/player_idle.png",
+  "./assets/collage/player_right.png",
+  "./assets/collage/player_left.png",
+  "./assets/collage/player_up.png",
+  "./assets/collage/player_down.png",
+  "./assets/collage/onion_idle.png",
+  "./assets/collage/onion_chase.png",
+  "./assets/collage/onion_defeated.png",
+  "./assets/collage/pickup_energy.png",
+  "./assets/collage/pickup_power.png",
+  "./assets/collage/pickup_score_star.png",
+  "./assets/collage/pickup_health.png",
+  "./assets/collage/gate_horizontal.png",
+  "./assets/collage/gate_vertical.png",
+  "./assets/collage/block_gate.png",
+  "./assets/collage/paper_arena_bg.png"
 ].map(withAssetVersion);
 
 function preloadImages(paths) {
